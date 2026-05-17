@@ -1,0 +1,12 @@
+.github/
+  workflows/
+    scrape.yml          ← GitHub Actions (daily 7 AM UTC + manual)
+scraper/
+  fetch.py              ← Main scraper (Playwright + requests)
+  requirements.txt      ← Python dependencies
+dashboard/
+  index.html            ← Live intelligence dashboard (GitHub Pages)
+  records.json          ← Latest run data (auto-updated)
+data/
+  records.json          ← Mirror of dashboard/records.json
+  leads.csv             ← GHL-ready CSV export
