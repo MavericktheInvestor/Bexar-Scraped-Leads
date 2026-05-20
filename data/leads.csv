@@ -1,1 +1,211 @@
 First Name,Last Name,Mailing Address,Mailing City,Mailing State,Mailing Zip,Property Address,Property City,Property State,Property Zip,Lead Type,Document Type,Date Filed,Document Number,Amount/Debt Owed,Seller Score,Motivated Seller Flags,Source,Public Records URL
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,ASSIGNMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,EASEMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,AGREEMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,RELEASE,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,NOTICE,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,ASSIGNMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,EASEMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,AGREEMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,RELEASE,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,NOTICE,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,ASSIGNMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,EASEMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,AGREEMENT,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,RELEASE,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,NOTICE,0.0,50,Pre-foreclosure | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Judgment,JUD,2023-04-04,ASSIGNMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Judgment,JUD,2023-04-04,EASEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Judgment,JUD,2023-04-04,AGREEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Judgment,JUD,2023-04-04,RELEASE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Judgment,JUD,2023-04-04,NOTICE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,ASSIGNMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,EASEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,AGREEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,RELEASE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,NOTICE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,ASSIGNMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,EASEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,AGREEMENT,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,RELEASE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,NOTICE,0.0,50,Judgment lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,ASSIGNMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,EASEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,AGREEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,RELEASE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,NOTICE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,ASSIGNMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,EASEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,AGREEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,RELEASE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,NOTICE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,ASSIGNMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,EASEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,AGREEMENT,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,RELEASE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,NOTICE,0.0,50,Tax lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,ASSIGNMENT,0.0,50,Mechanic lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,EASEMENT,0.0,50,Mechanic lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,AGREEMENT,0.0,50,Mechanic lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,RELEASE,0.0,50,Mechanic lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,NOTICE,0.0,50,Mechanic lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,ASSIGNMENT,0.0,50,HOA lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,EASEMENT,0.0,50,HOA lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,AGREEMENT,0.0,50,HOA lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,RELEASE,0.0,50,HOA lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,NOTICE,0.0,50,HOA lien | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Probate,PRO,2023-04-04,ASSIGNMENT,0.0,50,Probate / estate | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Probate,PRO,2023-04-04,EASEMENT,0.0,50,Probate / estate | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Probate,PRO,2023-04-04,AGREEMENT,0.0,50,Probate / estate | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Probate,PRO,2023-04-04,RELEASE,0.0,50,Probate / estate | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Probate,PRO,2023-04-04,NOTICE,0.0,50,Probate / estate | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,ASSIGNMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,EASEMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,AGREEMENT,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,RELEASE,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,NOTICE,0.0,50,Lis pendens | LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,DEED OF TRUST,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,AFFIDAVIT,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,DEED,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Lis Pendens,LP,2023-04-05,RELEASE OF FTL,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Lis Pendens,LP,2023-04-05,FEDERAL TAX LIEN,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,CORRECTION,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,TRANSFER,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Lis Pendens,LP,2023-04-04,ORDER,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,DEED OF TRUST,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,AFFIDAVIT,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,DEED,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-05,RELEASE OF FTL,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-05,FEDERAL TAX LIEN,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,CORRECTION,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,TRANSFER,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Notice of Foreclosure,NOFC,2023-04-04,ORDER,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,DEED OF TRUST,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,AFFIDAVIT,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,DEED,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-05,RELEASE OF FTL,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-05,FEDERAL TAX LIEN,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,CORRECTION,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,TRANSFER,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Tax Deed,TAXDEED,2023-04-04,ORDER,0.0,40,Pre-foreclosure,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Judgment,JUD,2023-04-04,DEED OF TRUST,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Judgment,JUD,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Judgment,JUD,2023-04-04,AFFIDAVIT,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Judgment,JUD,2023-04-04,DEED,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Judgment,JUD,2023-04-05,RELEASE OF FTL,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Judgment,JUD,2023-04-05,FEDERAL TAX LIEN,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Judgment,JUD,2023-04-04,CORRECTION,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Judgment,JUD,2023-04-04,TRANSFER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Judgment,JUD,2023-04-04,ORDER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,DEED OF TRUST,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,AFFIDAVIT,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,DEED,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-05,RELEASE OF FTL,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-05,FEDERAL TAX LIEN,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,CORRECTION,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,TRANSFER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Certified Judgment,CCJ,2023-04-04,ORDER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,DEED OF TRUST,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,AFFIDAVIT,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,DEED,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-05,RELEASE OF FTL,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-05,FEDERAL TAX LIEN,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,CORRECTION,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,TRANSFER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Domestic Judgment,DRJUD,2023-04-04,ORDER,0.0,40,Judgment lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,DEED OF TRUST,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,AFFIDAVIT,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,DEED,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-05,RELEASE OF FTL,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-05,FEDERAL TAX LIEN,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,CORRECTION,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,TRANSFER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Corp Tax Lien,LNCORPTX,2023-04-04,ORDER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,DEED OF TRUST,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,AFFIDAVIT,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,DEED,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-05,RELEASE OF FTL,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-05,FEDERAL TAX LIEN,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,CORRECTION,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,TRANSFER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,IRS Lien,LNIRS,2023-04-04,ORDER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,DEED OF TRUST,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,AFFIDAVIT,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,DEED,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-05,RELEASE OF FTL,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-05,FEDERAL TAX LIEN,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,CORRECTION,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,TRANSFER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Federal Lien,LNFED,2023-04-04,ORDER,0.0,40,Tax lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Lien,LN,2023-04-04,ASSIGNMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Lien,LN,2023-04-04,EASEMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Lien,LN,2023-04-04,AGREEMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Lien,LN,2023-04-04,RELEASE,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Lien,LN,2023-04-04,NOTICE,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,DEED OF TRUST,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,AFFIDAVIT,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,DEED,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-05,RELEASE OF FTL,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-05,FEDERAL TAX LIEN,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,CORRECTION,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,TRANSFER,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Mechanic Lien,LNMECH,2023-04-04,ORDER,0.0,40,Mechanic lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,DEED OF TRUST,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,AFFIDAVIT,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,DEED,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-05,RELEASE OF FTL,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-05,FEDERAL TAX LIEN,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,CORRECTION,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,TRANSFER,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,HOA Lien,LNHOA,2023-04-04,ORDER,0.0,40,HOA lien,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Housemax,Funding Fund I Llc,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,ASSIGNMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Lennar,Homes Of Texas Land And Construction Ltd,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,EASEMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Cevallos,Llc,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,AGREEMENT,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Dj,Jordan Funding Llc,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,RELEASE,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Continental,Homes Of Texas Lp,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,NOTICE,0.0,40,LLC / corp owner,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Probate,PRO,2023-04-04,DEED OF TRUST,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Probate,PRO,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Probate,PRO,2023-04-04,AFFIDAVIT,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Probate,PRO,2023-04-04,DEED,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Probate,PRO,2023-04-05,RELEASE OF FTL,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Probate,PRO,2023-04-05,FEDERAL TAX LIEN,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Probate,PRO,2023-04-04,CORRECTION,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Probate,PRO,2023-04-04,TRANSFER,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Probate,PRO,2023-04-04,ORDER,0.0,40,Probate / estate,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,DEED OF TRUST,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,UCC 1 REAL PROPERTY,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,AFFIDAVIT,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,DEED,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-05,RELEASE OF FTL,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-05,FEDERAL TAX LIEN,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,CORRECTION,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,TRANSFER,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Release Lis Pendens,RELLP,2023-04-04,ORDER,0.0,40,Lis pendens,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Lien,LN,2023-04-04,DEED OF TRUST,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Lien,LN,2023-04-04,UCC 1 REAL PROPERTY,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Lien,LN,2023-04-04,AFFIDAVIT,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Lien,LN,2023-04-04,DEED,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Lien,LN,2023-04-05,RELEASE OF FTL,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Lien,LN,2023-04-05,FEDERAL TAX LIEN,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Lien,LN,2023-04-04,CORRECTION,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Lien,LN,2023-04-04,TRANSFER,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Lien,LN,2023-04-04,ORDER,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Monrreal,Antonio Quinones,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,DEED OF TRUST,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Juan,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,UCC 1 REAL PROPERTY,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Luna,Bertha,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,AFFIDAVIT,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Kim,Diana A,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,DEED,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Internal,Revenue Service,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-05,RELEASE OF FTL,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Limon,Joel C Jr,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-05,FEDERAL TAX LIEN,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Corridor,Title Co,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,CORRECTION,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Sanchez,Felipe,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,TRANSFER,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
+Garcia,Roberto Sr Est,,,TX,,,,TX,,Medicaid Lien,MEDLN,2023-04-04,ORDER,0.0,30,,Bexar County Clerk,https://bexar.tx.publicsearch.us
