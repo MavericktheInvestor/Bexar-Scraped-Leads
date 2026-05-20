@@ -54,9 +54,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dashboard/records.json data/records.json data/leads.csv || true
           git diff --cached --quiet || git commit -m "chore: update leads $(date -u +%Y-%m-%d)"
-          git push
+          git push --force-with-lease || git pull --rebase && git push
 
-      - name: Upload Pages artifact
+      - name: Upload Paggit push --force-with-lease || git pull --rebase && git pushes artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dashboard/
