@@ -1,874 +1,569 @@
 """
-Bexar County Motivated Seller Lead Scraper v2
+Bexar County Motivated Seller Lead Scraper v3
 ==============================================
-Uses the PublicSearch.us REST API that powers the Bexar County clerk portal.
-Falls back to direct HTML scraping if API changes.
-Outputs: dashboard/records.json, data/records.json, data/leads.csv
+- Tries requests/API first, then Playwright browser
+- Strictly filters to last 7 days only
+- Parses the exact UI seen at bexar.tx.publicsearch.us
 """
 
-import asyncio
-import json
-import os
-import re
-import csv
-import time
-import io
-import zipfile
-import tempfile
+import asyncio, json, re, csv, time, io, zipfile, tempfile, os
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
 
-# ── optional dbfread ─────────────────────────────────────────────────────────
 try:
     from dbfread import DBF
     HAS_DBF = True
 except ImportError:
     HAS_DBF = False
-    print("⚠  dbfread not installed – parcel enrichment skipped")
+    print("⚠  dbfread not installed")
 
-# ── Config ────────────────────────────────────────────────────────────────────
 CLERK_BASE    = "https://bexar.tx.publicsearch.us"
-API_BASE      = "https://bexar.tx.publicsearch.us/api"
 LOOKBACK_DAYS = 7
 MAX_RETRIES   = 3
-RETRY_DELAY   = 4
+RETRY_DELAY   = 3
 
 DOC_TYPE_MAP = {
-    "LP":       "Lis Pendens",
-    "NOFC":     "Notice of Foreclosure",
-    "TAXDEED":  "Tax Deed",
-    "JUD":      "Judgment",
-    "CCJ":      "Certified Judgment",
-    "DRJUD":    "Domestic Judgment",
-    "LNCORPTX": "Corp Tax Lien",
-    "LNIRS":    "IRS Lien",
-    "LNFED":    "Federal Lien",
-    "LN":       "Lien",
-    "LNMECH":   "Mechanic Lien",
-    "LNHOA":    "HOA Lien",
-    "MEDLN":    "Medicaid Lien",
-    "PRO":      "Probate",
-    "NOC":      "Notice of Commencement",
-    "RELLP":    "Release Lis Pendens",
+    "LP":"Lis Pendens","NOFC":"Notice of Foreclosure","TAXDEED":"Tax Deed",
+    "JUD":"Judgment","CCJ":"Certified Judgment","DRJUD":"Domestic Judgment",
+    "LNCORPTX":"Corp Tax Lien","LNIRS":"IRS Lien","LNFED":"Federal Lien",
+    "LN":"Lien","LNMECH":"Mechanic Lien","LNHOA":"HOA Lien",
+    "MEDLN":"Medicaid Lien","PRO":"Probate",
+    "NOC":"Notice of Commencement","RELLP":"Release Lis Pendens",
 }
 
-# Paths
 ROOT     = Path(__file__).resolve().parent.parent
 DASH_DIR = ROOT / "dashboard"
 DATA_DIR = ROOT / "data"
 DASH_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def date_range():
-    end   = datetime.utcnow()
-    start = end - timedelta(days=LOOKBACK_DAYS)
-    return start.strftime("%m/%d/%Y"), end.strftime("%m/%d/%Y")
+# ── Dates ─────────────────────────────────────────────────────────────────────
+def date_range_mm():
+    e = datetime.utcnow(); s = e - timedelta(days=LOOKBACK_DAYS)
+    return s.strftime("%m/%d/%Y"), e.strftime("%m/%d/%Y")
 
 def date_range_iso():
-    end   = datetime.utcnow()
-    start = end - timedelta(days=LOOKBACK_DAYS)
-    return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
+    e = datetime.utcnow(); s = e - timedelta(days=LOOKBACK_DAYS)
+    return s.strftime("%Y-%m-%d"), e.strftime("%Y-%m-%d")
 
-def safe(v):
-    return str(v).strip() if v else ""
+def to_iso(raw):
+    if not raw: return ""
+    raw = str(raw).strip()
+    if re.match(r"\d{4}-\d{2}-\d{2}", raw): return raw[:10]
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
+    if m: return f"{m.group(3)}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)}"
+    m = re.match(r"(\d{4}-\d{2}-\d{2})T", raw)
+    if m: return m.group(1)
+    return raw
 
-def parse_amount(raw):
-    if not raw:
-        return 0.0
-    cleaned = re.sub(r"[^\d.]", "", str(raw))
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
+def safe(v): return str(v).strip() if v else ""
 
-def make_session():
+def amt(raw):
+    c = re.sub(r"[^\d.]","",str(raw or ""))
+    try: return float(c)
+    except: return 0.0
+
+# ── Session ───────────────────────────────────────────────────────────────────
+def session():
     s = requests.Session()
     s.headers.update({
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/html, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": CLERK_BASE + "/",
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                     "AppleWebKit/537.36 (KHTML, like Gecko) "
+                     "Chrome/124.0.0.0 Safari/537.36",
+        "Accept":"text/html,application/xhtml+xml,*/*",
+        "Accept-Language":"en-US,en;q=0.9",
     })
     return s
 
-def retry_get(session, url, **kwargs):
+def get(sess, url, **kw):
     for i in range(MAX_RETRIES):
         try:
-            r = session.get(url, timeout=30, **kwargs)
-            r.raise_for_status()
-            return r
+            r = sess.get(url, timeout=30, **kw); r.raise_for_status(); return r
         except Exception as e:
-            if i < MAX_RETRIES - 1:
-                print(f"    ↻ retry {i+1} – {e}")
-                time.sleep(RETRY_DELAY)
-            else:
-                print(f"    ✗ failed: {e}")
+            if i < MAX_RETRIES-1: time.sleep(RETRY_DELAY)
+            else: print(f"    ✗ {e}")
     return None
 
-def retry_post(session, url, **kwargs):
-    for i in range(MAX_RETRIES):
-        try:
-            r = session.post(url, timeout=30, **kwargs)
-            r.raise_for_status()
-            return r
-        except Exception as e:
-            if i < MAX_RETRIES - 1:
-                print(f"    ↻ retry {i+1} – {e}")
-                time.sleep(RETRY_DELAY)
-            else:
-                print(f"    ✗ failed: {e}")
-    return None
-
-# ── API Search (primary method) ───────────────────────────────────────────────
-
-def search_via_api(session, doc_type, start_date, end_date):
-    """
-    Call the PublicSearch.us REST API directly.
-    This is the same API the browser calls when you search on the portal.
-    """
-    records = []
-
-    # First hit the main page to get any session cookies / CSRF tokens
-    retry_get(session, CLERK_BASE + "/")
-    time.sleep(1)
-
-    page = 1
-    per_page = 50
-
-    while True:
-        # Try the standard PublicSearch API endpoint
-        params = {
-            "docTypes":  doc_type,
-            "dateFrom":  start_date,
-            "dateTo":    end_date,
-            "page":      page,
-            "perPage":   per_page,
-            "county":    "bexar",
-        }
-
-        # Try JSON API first
-        r = retry_get(session, API_BASE + "/search/instruments", params=params)
-        if r and r.headers.get("content-type", "").startswith("application/json"):
-            try:
-                data = r.json()
-                hits = (data.get("data") or data.get("results") or
-                        data.get("instruments") or data.get("hits") or [])
-                if not hits:
-                    break
-                for row in hits:
-                    rec = parse_api_row(row, doc_type)
-                    if rec:
-                        records.append(rec)
-                # Check pagination
-                total = (data.get("total") or data.get("totalCount") or
-                         data.get("count") or 0)
-                if page * per_page >= total or len(hits) < per_page:
-                    break
-                page += 1
-                time.sleep(0.5)
-                continue
-            except Exception as e:
-                print(f"    ⚠  JSON parse error: {e}")
-
-        # If JSON API didn't work, try the HTML search form
-        html_records = search_via_html(session, doc_type, start_date, end_date)
-        records.extend(html_records)
-        break
-
-    return records
-
-
-def parse_api_row(row, doc_type):
-    """Parse a single API result row into our standard record format."""
-    try:
-        cat_label = DOC_TYPE_MAP.get(doc_type, doc_type)
-
-        # Handle various field name conventions used by PublicSearch.us
-        doc_num = (safe(row.get("instrumentNumber")) or
-                   safe(row.get("docNumber")) or
-                   safe(row.get("bookPage")) or
-                   safe(row.get("id")) or "")
-
-        filed = (safe(row.get("filedDate")) or
-                 safe(row.get("recordedDate")) or
-                 safe(row.get("dateRecorded")) or "")
-        # Normalise date to YYYY-MM-DD
-        filed = normalise_date(filed)
-
-        # Grantor = owner/seller
-        grantors = row.get("grantors") or row.get("grantor") or []
-        if isinstance(grantors, list):
-            owner = "; ".join(
-                safe(g.get("name") or g.get("fullName") or g) for g in grantors
-            )
-        else:
-            owner = safe(grantors)
-
-        # Grantee = lender/court
-        grantees = row.get("grantees") or row.get("grantee") or []
-        if isinstance(grantees, list):
-            grantee = "; ".join(
-                safe(g.get("name") or g.get("fullName") or g) for g in grantees
-            )
-        else:
-            grantee = safe(grantees)
-
-        amount  = parse_amount(row.get("consideration") or row.get("amount") or 0)
-        legal   = safe(row.get("legalDescription") or row.get("legal") or "")
-
-        # Direct URL to this document
-        inst_id = safe(row.get("id") or row.get("instrumentId") or doc_num)
-        clerk_url = f"{CLERK_BASE}/doc/{inst_id}" if inst_id else CLERK_BASE
-
-        return {
-            "doc_num":      doc_num,
-            "doc_type":     doc_type,
-            "cat_label":    cat_label,
-            "filed":        filed,
-            "owner":        owner,
-            "grantee":      grantee,
-            "amount":       amount,
-            "legal":        legal,
-            "clerk_url":    clerk_url,
-            "prop_address": "", "prop_city": "", "prop_state": "TX", "prop_zip": "",
-            "mail_address": "", "mail_city": "", "mail_state": "TX", "mail_zip": "",
-            "flags": [], "score": 0,
-        }
-    except Exception as e:
-        print(f"    ⚠  row parse error: {e}")
-        return None
-
-
-def normalise_date(raw):
-    """Convert various date formats to YYYY-MM-DD."""
-    if not raw:
-        return ""
-    raw = str(raw).strip()
-    # Already ISO
-    if re.match(r"\d{4}-\d{2}-\d{2}", raw):
-        return raw[:10]
-    # MM/DD/YYYY
-    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
-    if m:
-        return f"{m.group(3)}-{m.group(1).zfill(2)}-{m.group(2).zfill(2)}"
-    # Timestamp with T
-    m = re.match(r"(\d{4}-\d{2}-\d{2})T", raw)
-    if m:
-        return m.group(1)
-    return raw
-
-# ── HTML fallback search ──────────────────────────────────────────────────────
-
-def search_via_html(session, doc_type, start_date, end_date):
-    """
-    Fallback: submit the search form and parse HTML results.
-    Handles multiple possible URL patterns for PublicSearch.us.
-    """
-    records = []
-    cat_label = DOC_TYPE_MAP.get(doc_type, doc_type)
-
-    # Try several known URL patterns
-    search_urls = [
-        f"{CLERK_BASE}/results",
-        f"{CLERK_BASE}/search",
-        f"{CLERK_BASE}/",
-    ]
-
-    search_params = [
-        # Pattern 1: query params
-        {
-            "docType": doc_type,
-            "startDate": start_date,
-            "endDate": end_date,
-            "searchType": "document",
-        },
-        # Pattern 2: alternate param names
-        {
-            "type": doc_type,
-            "dateFrom": start_date,
-            "dateTo": end_date,
-        },
-    ]
-
-    for url in search_urls:
-        for params in search_params:
-            r = retry_get(session, url, params=params)
-            if not r:
-                continue
-            rows = parse_html_results(r.text, doc_type, cat_label)
-            if rows:
-                print(f"    ✅ HTML scrape found {len(rows)} rows at {url}")
-                records.extend(rows)
-                return records
-            time.sleep(0.5)
-
-    # Last resort: try the OData / publicsearch specific endpoint
-    odata_records = search_via_odata(session, doc_type, start_date, end_date)
-    if odata_records:
-        return odata_records
-
-    print(f"    ⚠  No results found for {doc_type} via any method")
-    return records
-
-
-def search_via_odata(session, doc_type, start_date, end_date):
-    """Try the OData endpoint that some PublicSearch.us deployments expose."""
-    records = []
-    cat_label = DOC_TYPE_MAP.get(doc_type, doc_type)
-
-    # Convert dates for OData filter
-    try:
-        s = datetime.strptime(start_date, "%m/%d/%Y").strftime("%Y-%m-%d")
-        e = datetime.strptime(end_date,   "%m/%d/%Y").strftime("%Y-%m-%d")
-    except Exception:
-        s, e = start_date, end_date
-
-    endpoints = [
-        f"{API_BASE}/instruments",
-        f"{CLERK_BASE}/api/instruments",
-        f"{CLERK_BASE}/odata/instruments",
-    ]
-
-    filter_str = (f"documentType eq '{doc_type}' and "
-                  f"filedDate ge {s} and filedDate le {e}")
-
-    for ep in endpoints:
-        r = retry_get(session, ep, params={
-            "$filter": filter_str,
-            "$top": 500,
-            "$orderby": "filedDate desc",
-        })
-        if not r:
+# ── API search ────────────────────────────────────────────────────────────────
+def api_search(sess, doc_type, s_iso, e_iso):
+    cat = DOC_TYPE_MAP.get(doc_type, doc_type)
+    recs = []
+    sess.headers["Accept"] = "application/json"
+    for ep, params in [
+        (f"{CLERK_BASE}/api/instruments",
+         {"docType":doc_type,"dateFrom":s_iso,"dateTo":e_iso,"page":1,"perPage":200}),
+        (f"{CLERK_BASE}/api/search",
+         {"type":doc_type,"start":s_iso,"end":e_iso,"page":1,"size":200}),
+        (f"{CLERK_BASE}/api/records",
+         {"documentType":doc_type,"startDate":s_iso,"endDate":e_iso}),
+    ]:
+        r = get(sess, ep, params=params)
+        if not r or "json" not in r.headers.get("content-type",""):
             continue
         try:
-            data = r.json()
-            items = data.get("value") or data.get("data") or []
+            data  = r.json()
+            items = (data.get("data") or data.get("results") or
+                     data.get("instruments") or data.get("hits") or
+                     data.get("records") or (data if isinstance(data,list) else []))
             for row in items:
-                rec = parse_api_row(row, doc_type)
-                if rec:
-                    records.append(rec)
-            if records:
-                print(f"    ✅ OData found {len(records)} records")
-                return records
-        except Exception:
-            pass
+                rec = _parse_api_row(row, doc_type, cat)
+                if rec: recs.append(rec)
+            if recs:
+                break
+        except Exception as e:
+            print(f"    ⚠  {e}")
+    sess.headers["Accept"] = "text/html,*/*"
+    return recs
 
-    return records
+def _parse_api_row(row, doc_type, cat):
+    try:
+        doc_num = (safe(row.get("instrumentNumber")) or safe(row.get("docNumber")) or
+                   safe(row.get("bookPage")) or safe(row.get("id")) or "")
+        if not doc_num: return None
+        filed = to_iso(row.get("filedDate") or row.get("recordedDate") or
+                       row.get("dateRecorded") or row.get("date",""))
+        def names(key):
+            v = row.get(key) or []
+            if isinstance(v,list):
+                return "; ".join(safe(g.get("name") or g.get("fullName") or str(g)) for g in v)
+            return safe(v)
+        inst_id = safe(row.get("id") or row.get("instrumentId") or doc_num)
+        return {
+            "doc_num":doc_num,"doc_type":doc_type,"cat_label":cat,
+            "filed":filed,"owner":names("grantors"),"grantee":names("grantees"),
+            "amount":amt(row.get("consideration") or row.get("amount",0)),
+            "legal":safe(row.get("legalDescription") or row.get("legal","")),
+            "clerk_url":f"{CLERK_BASE}/doc/{inst_id}" if inst_id else CLERK_BASE,
+            "prop_address":"","prop_city":"","prop_state":"TX","prop_zip":"",
+            "mail_address":"","mail_city":"","mail_state":"TX","mail_zip":"",
+            "flags":[],"score":0,
+        }
+    except: return None
 
-
-def parse_html_results(html, doc_type, cat_label):
-    """Parse HTML table/list results into records."""
-    records = []
-    soup = BeautifulSoup(html, "lxml")
-
-    tables = soup.find_all("table")
-    for tbl in tables:
-        headers = [th.get_text(strip=True).lower()
-                   for th in tbl.find_all("th")]
-        if len(headers) < 3:
-            continue
-
-        def col(row, frags):
-            for frag in frags:
-                for i, h in enumerate(headers):
-                    if frag in h:
-                        cells = row.find_all("td")
-                        return cells[i].get_text(strip=True) if i < len(cells) else ""
+# ── HTML parse ────────────────────────────────────────────────────────────────
+def parse_html(html, doc_type, cat):
+    recs = []; soup = BeautifulSoup(html,"lxml")
+    for tbl in soup.find_all("table"):
+        hdrs = [th.get_text(strip=True).lower() for th in tbl.find_all("th")]
+        if len(hdrs) < 3: continue
+        def col(tr, frags):
+            for f in frags:
+                for i,h in enumerate(hdrs):
+                    if f in h:
+                        cells = tr.find_all("td")
+                        return cells[i].get_text(strip=True) if i<len(cells) else ""
             return ""
-
         for tr in tbl.find_all("tr")[1:]:
             cells = tr.find_all("td")
-            if len(cells) < 3:
-                continue
-
-            # Get URL from any anchor
-            doc_url = ""
+            if len(cells) < 3: continue
+            url = ""
             for a in tr.find_all("a"):
-                href = a.get("href", "")
-                if href:
-                    doc_url = href if href.startswith("http") else CLERK_BASE + href
-                    break
-
-            doc_num = (col(tr, ["instrument","doc","book","number"]) or
-                       cells[0].get_text(strip=True))
-            if not doc_num:
-                continue
-
-            records.append({
-                "doc_num":      doc_num,
-                "doc_type":     doc_type,
-                "cat_label":    cat_label,
-                "filed":        normalise_date(col(tr, ["date","filed","recorded"])),
-                "owner":        col(tr, ["grantor","owner","name"]),
-                "grantee":      col(tr, ["grantee","lender","trustee"]),
-                "amount":       parse_amount(col(tr, ["amount","consider","value"])),
-                "legal":        col(tr, ["legal","description","property"]),
-                "clerk_url":    doc_url or CLERK_BASE,
-                "prop_address": "", "prop_city": "", "prop_state": "TX", "prop_zip": "",
-                "mail_address": "", "mail_city": "", "mail_state": "TX", "mail_zip": "",
-                "flags": [], "score": 0,
+                href=a.get("href","")
+                if href: url=href if href.startswith("http") else CLERK_BASE+href; break
+            dn = col(tr,["instrument","doc #","doc#","book","number"]) or cells[0].get_text(strip=True)
+            if not dn: continue
+            recs.append({
+                "doc_num":dn,"doc_type":doc_type,"cat_label":cat,
+                "filed":to_iso(col(tr,["date","filed","recorded"])),
+                "owner":col(tr,["grantor","owner"]),
+                "grantee":col(tr,["grantee","lender","trustee"]),
+                "amount":amt(col(tr,["amount","consideration","value"])),
+                "legal":col(tr,["legal","description","subdivision"]),
+                "clerk_url":url or CLERK_BASE,
+                "prop_address":"","prop_city":"","prop_state":"TX","prop_zip":"",
+                "mail_address":"","mail_city":"","mail_state":"TX","mail_zip":"",
+                "flags":[],"score":0,
             })
+    return recs
 
-    return records
-
-# ── Playwright deep scraper (last resort) ─────────────────────────────────────
-
-async def scrape_with_playwright(doc_types, start_date, end_date):
-    """
-    Full browser scrape using Playwright.
-    Used when the API and HTML methods return nothing.
-    """
+# ── Playwright ────────────────────────────────────────────────────────────────
+async def playwright_scrape(doc_types, start_mm, end_mm):
     from playwright.async_api import async_playwright, TimeoutError as PWTimeout
-
-    records = []
-    print("\n🎭 Launching Playwright browser scraper …")
+    recs = []
+    print("\n🎭 Playwright browser scrape …")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         ctx = await browser.new_context(
-            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            viewport={"width": 1280, "height": 900},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/124.0.0.0 Safari/537.36",
+            viewport={"width":1280,"height":900},
         )
         page = await ctx.new_page()
 
-        # Load main page first
-        try:
-            await page.goto(CLERK_BASE, timeout=30000)
-            await page.wait_for_load_state("networkidle", timeout=20000)
-            print(f"  ✅ Portal loaded: {page.url}")
+        # Capture JSON API responses automatically
+        api_data = []
+        async def on_resp(resp):
+            if any(k in resp.url for k in ["api","instrument","search","result"]):
+                try:
+                    if "json" in resp.headers.get("content-type",""):
+                        api_data.append(await resp.json())
+                except: pass
+        page.on("response", on_resp)
 
-            # Log all network requests to find the API
-            api_calls = []
-            page.on("request", lambda req: api_calls.append(req.url)
-                    if "api" in req.url or "search" in req.url or
-                       "instrument" in req.url.lower() else None)
+        try:
+            await page.goto(CLERK_BASE, timeout=40000)
+            await page.wait_for_load_state("networkidle", timeout=20000)
+            await asyncio.sleep(2)
+
+            # Dismiss disclaimer if present
+            for txt in ["Accept","I Agree","Continue","OK"]:
+                try:
+                    btn = page.get_by_role("button", name=txt)
+                    if await btn.count() and await btn.first.is_visible():
+                        await btn.first.click(); await asyncio.sleep(1); break
+                except: pass
+
+            # Try Advanced Search tab (visible in screenshot)
+            try:
+                adv = page.get_by_text("Advanced Search", exact=True)
+                if await adv.count():
+                    await adv.first.click()
+                    await page.wait_for_load_state("networkidle", timeout=10000)
+                    await asyncio.sleep(1)
+                    print("  ✅ Advanced Search tab active")
+            except: pass
 
             for doc_type in doc_types:
-                cat_label = DOC_TYPE_MAP.get(doc_type, doc_type)
-                print(f"  🔍 Playwright: searching {doc_type} …")
-                recs = await _playwright_search(page, doc_type, cat_label,
-                                                 start_date, end_date)
-                print(f"     → {len(recs)} records")
-                records.extend(recs)
-                await asyncio.sleep(2)
+                cat = DOC_TYPE_MAP.get(doc_type, doc_type)
+                print(f"  🔍 [{doc_type}]")
+                api_data.clear()
 
-            # Print discovered API calls for debugging
-            if api_calls:
-                print("\n  📡 Discovered API endpoints:")
-                for url in set(api_calls)[:10]:
-                    print(f"     {url}")
+                found = await _pw_search(page, doc_type, cat, start_mm, end_mm)
+                recs.extend(found)
+
+                # Also grab anything captured from the network
+                for body in api_data:
+                    items = (body.get("data") or body.get("results") or
+                             body.get("instruments") or body.get("hits") or
+                             (body if isinstance(body,list) else []))
+                    for row in items:
+                        if isinstance(row,dict):
+                            rec = _parse_api_row(row, doc_type, cat)
+                            if rec: recs.append(rec)
+
+                print(f"     → {len(found)} records")
+                await asyncio.sleep(1.5)
 
         except Exception as e:
-            print(f"  ✗ Playwright error: {e}")
+            print(f"  ✗ {e}")
+            import traceback; traceback.print_exc()
         finally:
             await browser.close()
 
-    return records
+    return recs
 
 
-async def _playwright_search(page, doc_type, cat_label, start_date, end_date):
+async def _pw_search(page, doc_type, cat, start_mm, end_mm):
     from playwright.async_api import TimeoutError as PWTimeout
-    records = []
+    recs = []
 
     for attempt in range(MAX_RETRIES):
         try:
-            # Navigate back to home
-            await page.goto(CLERK_BASE, timeout=30000)
-            await page.wait_for_load_state("networkidle", timeout=15000)
+            # Fill doc type in search box (Quick Search mode)
+            for sel in [
+                "input[placeholder*='grantor' i]",
+                "input[placeholder*='search' i]",
+                "input[name*='search' i]",
+                "#searchTerm","input[type='search']",
+            ]:
+                el = await page.query_selector(sel)
+                if el and await el.is_visible():
+                    await el.triple_click(); await el.fill(doc_type); break
 
-            # Take a snapshot of what's on screen for debugging
+            # Try to set the date range
+            # The portal shows "Date Range: 1/1/1800 → 5/27/2026"
+            # We need to change this to our window
+            for sel in [
+                "input[id*='from' i]","input[name*='from' i]",
+                "input[placeholder*='from' i]","#dateFrom","#startDate",
+                ".date-range input:first-child",
+            ]:
+                el = await page.query_selector(sel)
+                if el and await el.is_visible():
+                    await el.triple_click(); await el.fill(""); await el.type(start_mm, delay=40); break
+
+            for sel in [
+                "input[id*='to' i]","input[name*='to' i]",
+                "input[placeholder*='to' i]","#dateTo","#endDate",
+                ".date-range input:last-child",
+            ]:
+                el = await page.query_selector(sel)
+                if el and await el.is_visible():
+                    await el.triple_click(); await el.fill(""); await el.type(end_mm, delay=40); break
+
+            # Submit
+            for sel in [
+                "button:has-text('Search')","input[type='submit']",
+                "button[type='submit']","#searchBtn",".search-btn",
+            ]:
+                el = await page.query_selector(sel)
+                if el and await el.is_visible():
+                    await el.click(); break
+            else:
+                await page.keyboard.press("Enter")
+
+            await page.wait_for_load_state("networkidle", timeout=20000)
+            await asyncio.sleep(2)
+
             html = await page.content()
-            soup = BeautifulSoup(html, "lxml")
+            recs.extend(parse_html(html, doc_type, cat))
 
-            # Find all input fields and selects
-            inputs  = soup.find_all(["input", "select", "textarea"])
-            forms   = soup.find_all("form")
-            print(f"     Found {len(inputs)} inputs, {len(forms)} forms")
+            # Paginate
+            for _ in range(30):
+                nxt = None
+                for ns in [
+                    "a[aria-label*='next' i]","button[aria-label*='next' i]",
+                    ".next-page a","a:has-text('Next')","button:has-text('Next')",
+                    "#nextPage","[data-testid='next-page']",
+                ]:
+                    el = await page.query_selector(ns)
+                    if el and await el.is_visible():
+                        dis = await el.get_attribute("disabled")
+                        ard = await el.get_attribute("aria-disabled")
+                        if not dis and ard != "true":
+                            nxt = el; break
+                if not nxt: break
+                await nxt.click()
+                await page.wait_for_load_state("networkidle", timeout=15000)
+                await asyncio.sleep(1)
+                more = parse_html(await page.content(), doc_type, cat)
+                if not more: break
+                recs.extend(more)
 
-            # Try to interact with search form
-            filled = await _try_fill_form(page, doc_type, start_date, end_date)
-
-            if filled:
-                await page.wait_for_load_state("networkidle", timeout=20000)
-                await asyncio.sleep(2)
-                html = await page.content()
-                recs = parse_html_results(html, doc_type, cat_label)
-                if recs:
-                    return recs
-
-                # Try paginating
-                page_count = 0
-                while page_count < 20:
-                    next_sel = await page.query_selector(
-                        "a[aria-label='Next'], button[aria-label='Next'], "
-                        ".next a, #nextPage, [data-page='next'], "
-                        "a:has-text('Next'), button:has-text('Next')"
-                    )
-                    if not next_sel:
-                        break
-                    disabled = await next_sel.get_attribute("disabled")
-                    aria_disabled = await next_sel.get_attribute("aria-disabled")
-                    if disabled or aria_disabled == "true":
-                        break
-                    await next_sel.click()
-                    await page.wait_for_load_state("networkidle", timeout=15000)
-                    await asyncio.sleep(1)
-                    more = parse_html_results(await page.content(), doc_type, cat_label)
-                    records.extend(more)
-                    page_count += 1
-
-            return records
+            return recs
 
         except PWTimeout:
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(RETRY_DELAY)
+            if attempt < MAX_RETRIES-1: await asyncio.sleep(RETRY_DELAY)
         except Exception as e:
-            print(f"     ✗ {e}")
-            break
+            print(f"     ✗ {e}"); break
 
-    return records
+    return recs
 
-
-async def _try_fill_form(page, doc_type, start_date, end_date):
-    """Try every known way to fill the search form."""
-    try:
-        # Click advanced search if available
-        for sel in ["text=Advanced Search", "text=Advanced", "#advSearch",
-                    "[data-tab='advanced']", ".advanced-search-tab"]:
-            try:
-                el = await page.query_selector(sel)
-                if el:
-                    await el.click()
-                    await asyncio.sleep(0.5)
-                    break
-            except Exception:
-                pass
-
-        # Fill document type
-        for sel in [
-            f"select option[value='{doc_type}']",
-            f"select[name*='type' i]", f"select[id*='type' i]",
-            f"select[name*='doc' i]", "select.document-type",
-            "#docType", "#documentType",
-        ]:
-            try:
-                el = await page.query_selector(sel)
-                if el:
-                    tag = (await el.evaluate("e => e.tagName")).lower()
-                    if tag == "select":
-                        await el.select_option(value=doc_type)
-                    break
-            except Exception:
-                pass
-
-        # Fill start date
-        for sel in ["input[name*='start' i]", "input[name*='from' i]",
-                    "input[id*='start' i]", "input[id*='from' i]",
-                    "input[placeholder*='from' i]", "input[placeholder*='start' i]",
-                    "#startDate", "#dateFrom"]:
-            try:
-                el = await page.query_selector(sel)
-                if el:
-                    await el.triple_click()
-                    await el.type(start_date)
-                    break
-            except Exception:
-                pass
-
-        # Fill end date
-        for sel in ["input[name*='end' i]", "input[name*='to' i]",
-                    "input[id*='end' i]", "input[id*='to' i]",
-                    "input[placeholder*='to' i]", "input[placeholder*='end' i]",
-                    "#endDate", "#dateTo"]:
-            try:
-                el = await page.query_selector(sel)
-                if el:
-                    await el.triple_click()
-                    await el.type(end_date)
-                    break
-            except Exception:
-                pass
-
-        # Submit
-        for sel in ["button[type='submit']", "input[type='submit']",
-                    "button:has-text('Search')", "#searchBtn",
-                    ".search-button", "button.btn-primary"]:
-            try:
-                el = await page.query_selector(sel)
-                if el:
-                    await el.click()
-                    return True
-            except Exception:
-                pass
-
-    except Exception as e:
-        print(f"     ⚠  form fill: {e}")
-
-    return False
-
-# ── BCAD Parcel Lookup ─────────────────────────────────────────────────────────
-
+# ── Parcel lookup ─────────────────────────────────────────────────────────────
 class ParcelLookup:
-    BCAD_URLS = [
+    URLS = [
         "https://www.bcad.org/clientdb/PropertyExport.zip",
         "https://www.bcad.org/Downloads/PropertyExport.zip",
     ]
-
     def __init__(self):
-        self.index = {}
+        self.idx = {}
         self._load()
 
     def _load(self):
-        if not HAS_DBF:
-            return
-        session = make_session()
-        raw = None
-        for url in self.BCAD_URLS:
-            print(f"  ↓ Trying BCAD parcel data: {url}")
+        if not HAS_DBF: return
+        sess = session()
+        raw  = None
+        for url in self.URLS:
+            print(f"  ↓ BCAD: {url}")
             try:
-                r = session.get(url, timeout=120, stream=True)
-                r.raise_for_status()
+                r = sess.get(url, timeout=120, stream=True); r.raise_for_status()
                 buf = io.BytesIO()
-                for chunk in r.iter_content(65536):
-                    buf.write(chunk)
+                for chunk in r.iter_content(65536): buf.write(chunk)
                 raw = buf.getvalue()
-                print(f"  ✅ Downloaded {len(raw):,} bytes")
-                break
-            except Exception as e:
-                print(f"  ✗ {e}")
-
-        if not raw:
-            print("  ⚠  BCAD download failed – no address enrichment")
-            return
-
+                print(f"  ✅ {len(raw):,} bytes"); break
+            except Exception as e: print(f"  ✗ {e}")
+        if not raw: print("  ⚠  BCAD unavailable"); return
         try:
-            zf = zipfile.ZipFile(io.BytesIO(raw))
-            dbf_files = sorted(
-                [n for n in zf.namelist() if n.lower().endswith(".dbf")],
-                key=lambda n: zf.getinfo(n).file_size, reverse=True
-            )
-            if not dbf_files:
-                print("  ⚠  No DBF in ZIP")
-                return
+            zf   = zipfile.ZipFile(io.BytesIO(raw))
+            dbfs = sorted([n for n in zf.namelist() if n.lower().endswith(".dbf")],
+                          key=lambda n: zf.getinfo(n).file_size, reverse=True)
+            if not dbfs: return
             with tempfile.TemporaryDirectory() as tmp:
                 zf.extractall(tmp)
-                self._index_dbf(os.path.join(tmp, dbf_files[0]))
-            print(f"  ✅ Parcel index: {len(self.index):,} entries")
-        except Exception as e:
-            print(f"  ✗ Parcel ZIP error: {e}")
+                self._index(os.path.join(tmp, dbfs[0]))
+            print(f"  ✅ Parcel index: {len(self.idx):,} entries")
+        except Exception as e: print(f"  ✗ {e}")
 
-    def _index_dbf(self, path):
+    def _index(self, path):
         try:
-            tbl = DBF(path, ignore_missing_memofile=True, encoding="latin-1")
-            for row in tbl:
-                r = {k.upper(): safe(v) for k, v in row.items()}
-                owner = (r.get("OWNER") or r.get("OWN1") or
-                         r.get("OWNERNAME") or "").upper().strip()
-                if not owner:
-                    continue
-                parcel = {
-                    "prop_address": r.get("SITE_ADDR") or r.get("SITEADDR") or "",
-                    "prop_city":    r.get("SITE_CITY") or "",
-                    "prop_state":   r.get("SITE_STATE") or "TX",
-                    "prop_zip":     r.get("SITE_ZIP") or r.get("SITEZIP") or "",
-                    "mail_address": r.get("ADDR_1") or r.get("MAILADR1") or "",
-                    "mail_city":    r.get("CITY") or r.get("MAILCITY") or "",
-                    "mail_state":   r.get("STATE") or r.get("MAILSTATE") or "TX",
-                    "mail_zip":     r.get("ZIP") or r.get("MAILZIP") or "",
+            for row in DBF(path, ignore_missing_memofile=True, encoding="latin-1"):
+                r = {k.upper(): safe(v) for k,v in row.items()}
+                owner = (r.get("OWNER") or r.get("OWN1") or r.get("OWNERNAME","")).upper().strip()
+                if not owner: continue
+                p = {
+                    "prop_address": r.get("SITE_ADDR") or r.get("SITEADDR",""),
+                    "prop_city":    r.get("SITE_CITY",""),
+                    "prop_state":   r.get("SITE_STATE","TX"),
+                    "prop_zip":     r.get("SITE_ZIP") or r.get("SITEZIP",""),
+                    "mail_address": r.get("ADDR_1") or r.get("MAILADR1",""),
+                    "mail_city":    r.get("CITY") or r.get("MAILCITY",""),
+                    "mail_state":   r.get("STATE") or r.get("MAILSTATE","TX"),
+                    "mail_zip":     r.get("ZIP") or r.get("MAILZIP",""),
                 }
-                for key in self._variants(owner):
-                    self.index.setdefault(key, parcel)
-        except Exception as e:
-            print(f"  ✗ DBF read: {e}")
+                for k in self._variants(owner): self.idx.setdefault(k, p)
+        except Exception as e: print(f"  ✗ DBF: {e}")
 
     @staticmethod
-    def _variants(name):
-        name = re.sub(r"\s+", " ", name).strip().upper()
-        v = {name}
-        if "," in name:
-            parts = [p.strip() for p in name.split(",", 1)]
-            v.add(f"{parts[1]} {parts[0]}")
+    def _variants(n):
+        n = re.sub(r"\s+"," ",n).strip().upper(); v = {n}
+        if "," in n:
+            parts = [p.strip() for p in n.split(",",1)]; v.add(f"{parts[1]} {parts[0]}")
         else:
-            parts = name.split()
-            if len(parts) >= 2:
-                v.add(f"{parts[-1]},{' '.join(parts[:-1])}")
-                v.add(f"{parts[-1]} {' '.join(parts[:-1])}")
+            pts = n.split()
+            if len(pts) >= 2:
+                v.add(f"{pts[-1]},{' '.join(pts[:-1])}")
+                v.add(f"{pts[-1]} {' '.join(pts[:-1])}")
         return list(v)
 
     def lookup(self, owner):
-        if not owner:
-            return {}
-        for key in self._variants(owner.upper()):
-            hit = self.index.get(key)
-            if hit:
-                return hit
+        if not owner: return {}
+        for k in self._variants(owner.upper()):
+            h = self.idx.get(k)
+            if h: return h
         return {}
 
-# ── Scoring ───────────────────────────────────────────────────────────────────
-
-def score_record(r, week_cutoff):
-    flags = []
-    score = 30
-    dt    = r.get("doc_type", "")
-    amt   = r.get("amount", 0.0)
-    owner = (r.get("owner") or "").upper()
-
-    if dt in ("LP", "RELLP"):           flags.append("Lis pendens")
-    if dt in ("NOFC", "TAXDEED"):       flags.append("Pre-foreclosure")
-    if dt in ("JUD", "CCJ", "DRJUD"):   flags.append("Judgment lien")
-    if dt in ("LNCORPTX","LNIRS","LNFED"): flags.append("Tax lien")
-    if dt == "LNMECH":                  flags.append("Mechanic lien")
-    if dt == "LNHOA":                   flags.append("HOA lien")
-    if dt == "PRO":                     flags.append("Probate / estate")
-    if any(k in owner for k in ("LLC","INC","CORP","LP","LTD","TRUST")):
+# ── Score ─────────────────────────────────────────────────────────────────────
+def score(r, cutoff):
+    flags=[]; sc=30
+    dt=r.get("doc_type",""); a=r.get("amount",0.0); own=(r.get("owner") or "").upper()
+    if dt in ("LP","RELLP"):              flags.append("Lis pendens")
+    if dt in ("NOFC","TAXDEED"):          flags.append("Pre-foreclosure")
+    if dt in ("JUD","CCJ","DRJUD"):       flags.append("Judgment lien")
+    if dt in ("LNCORPTX","LNIRS","LNFED"):flags.append("Tax lien")
+    if dt == "LNMECH":                    flags.append("Mechanic lien")
+    if dt == "LNHOA":                     flags.append("HOA lien")
+    if dt == "PRO":                       flags.append("Probate / estate")
+    if any(k in own for k in ("LLC","INC","CORP","LP","LTD","TRUST")):
         flags.append("LLC / corp owner")
-    if "Lis pendens" in flags and "Pre-foreclosure" in flags:
-        score += 20
-    if amt > 100_000:   score += 15
-    elif amt > 50_000:  score += 10
-    if r.get("filed", "") >= week_cutoff:
-        flags.append("New this week")
-        score += 5
-    if r.get("prop_address"):
-        score += 5
-    score += 10 * len([f for f in flags if f != "New this week"])
-    return flags, min(score, 100)
+    if "Lis pendens" in flags and "Pre-foreclosure" in flags: sc+=20
+    if a>100_000: sc+=15
+    elif a>50_000: sc+=10
+    if r.get("filed","")>=cutoff: flags.append("New this week"); sc+=5
+    if r.get("prop_address"): sc+=5
+    sc += 10*len([f for f in flags if f!="New this week"])
+    return flags, min(sc,100)
 
-# ── CSV export ────────────────────────────────────────────────────────────────
-
+# ── CSV ───────────────────────────────────────────────────────────────────────
 def export_csv(records, path):
-    fields = [
-        "First Name","Last Name",
-        "Mailing Address","Mailing City","Mailing State","Mailing Zip",
-        "Property Address","Property City","Property State","Property Zip",
-        "Lead Type","Document Type","Date Filed","Document Number",
-        "Amount/Debt Owed","Seller Score","Motivated Seller Flags",
-        "Source","Public Records URL",
-    ]
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader()
+    fields=["First Name","Last Name",
+            "Mailing Address","Mailing City","Mailing State","Mailing Zip",
+            "Property Address","Property City","Property State","Property Zip",
+            "Lead Type","Document Type","Date Filed","Document Number",
+            "Amount/Debt Owed","Seller Score","Motivated Seller Flags",
+            "Source","Public Records URL"]
+    with open(path,"w",newline="",encoding="utf-8") as f:
+        w=csv.DictWriter(f,fieldnames=fields); w.writeheader()
         for r in records:
-            first, last = split_name(r.get("owner",""))
+            fn,ln=_split(r.get("owner",""))
             w.writerow({
-                "First Name":             first,
-                "Last Name":              last,
-                "Mailing Address":        r.get("mail_address",""),
-                "Mailing City":           r.get("mail_city",""),
-                "Mailing State":          r.get("mail_state","TX"),
-                "Mailing Zip":            r.get("mail_zip",""),
-                "Property Address":       r.get("prop_address",""),
-                "Property City":          r.get("prop_city",""),
-                "Property State":         r.get("prop_state","TX"),
-                "Property Zip":           r.get("prop_zip",""),
-                "Lead Type":              r.get("cat_label",""),
-                "Document Type":          r.get("doc_type",""),
-                "Date Filed":             r.get("filed",""),
-                "Document Number":        r.get("doc_num",""),
-                "Amount/Debt Owed":       r.get("amount",""),
-                "Seller Score":           r.get("score",0),
-                "Motivated Seller Flags": " | ".join(r.get("flags",[])),
-                "Source":                 "Bexar County Clerk",
-                "Public Records URL":     r.get("clerk_url",""),
+                "First Name":fn,"Last Name":ln,
+                "Mailing Address":r.get("mail_address",""),
+                "Mailing City":r.get("mail_city",""),
+                "Mailing State":r.get("mail_state","TX"),
+                "Mailing Zip":r.get("mail_zip",""),
+                "Property Address":r.get("prop_address",""),
+                "Property City":r.get("prop_city",""),
+                "Property State":r.get("prop_state","TX"),
+                "Property Zip":r.get("prop_zip",""),
+                "Lead Type":r.get("cat_label",""),
+                "Document Type":r.get("doc_type",""),
+                "Date Filed":r.get("filed",""),
+                "Document Number":r.get("doc_num",""),
+                "Amount/Debt Owed":r.get("amount",""),
+                "Seller Score":r.get("score",0),
+                "Motivated Seller Flags":" | ".join(r.get("flags",[])),
+                "Source":"Bexar County Clerk",
+                "Public Records URL":r.get("clerk_url",""),
             })
 
-def split_name(full):
-    if not full:
-        return "", ""
+def _split(full):
+    if not full: return "",""
     if "," in full:
-        parts = [p.strip().title() for p in full.split(",",1)]
-        return parts[1], parts[0]
-    parts = full.strip().title().split()
-    if len(parts) == 1:
-        return "", parts[0]
-    return parts[0], " ".join(parts[1:])
+        p=[x.strip().title() for x in full.split(",",1)]; return p[1],p[0]
+    p=full.strip().title().split()
+    if len(p)==1: return "",p[0]
+    return p[0]," ".join(p[1:])
 
 # ── Main ──────────────────────────────────────────────────────────────────────
-
 async def main():
-    print("=" * 60)
-    print("  Bexar County Motivated Seller Lead Scraper v2")
+    print("="*60)
+    print("  Bexar County Motivated Seller Scraper v3")
     print(f"  {datetime.utcnow().isoformat()} UTC")
-    print("=" * 60)
+    print("="*60)
 
-    start_mm, end_mm   = date_range()       # MM/DD/YYYY for forms
-    start_iso, end_iso = date_range_iso()   # YYYY-MM-DD for output
-    print(f"\n📅 Date range: {start_iso} → {end_iso}\n")
+    s_mm,  e_mm  = date_range_mm()
+    s_iso, e_iso = date_range_iso()
+    print(f"\n📅 Window: {s_iso} → {e_iso}\n")
 
-    # ── Parcel data ───────────────────────────────────────────────────────
-    print("📦 Loading BCAD parcel data …")
+    print("📦 BCAD parcel data …")
     parcel = ParcelLookup()
 
-    # ── Scrape ────────────────────────────────────────────────────────────
-    session  = make_session()
+    sess = session()
+    print("\n🌐 Priming portal session …")
+    r0 = get(sess, CLERK_BASE)
+    print(f"  Portal: {'✅ reachable' if r0 else '⚠  unreachable'}")
+
     all_recs = []
-
-    print(f"\n🏛  Scraping {len(DOC_TYPE_MAP)} document types …\n")
-
-    for doc_type, label in DOC_TYPE_MAP.items():
-        print(f"  [{doc_type}] {label}")
-        recs = search_via_api(session, doc_type, start_mm, end_mm)
-        print(f"    → {len(recs)} records (API/HTML)")
-
+    print(f"\n🏛  API/HTML search — {len(DOC_TYPE_MAP)} doc types …\n")
+    for dt, label in DOC_TYPE_MAP.items():
+        print(f"  [{dt}] {label}")
+        recs = api_search(sess, dt, s_iso, e_iso)
         if not recs:
-            # Try Playwright for this doc type
-            try:
-                recs = await scrape_with_playwright([doc_type], start_mm, end_mm)
-                print(f"    → {len(recs)} records (Playwright)")
-            except Exception as e:
-                print(f"    ✗ Playwright failed: {e}")
-
+            # HTML fallback
+            for params in [
+                {"docType":dt,"dateFrom":s_mm,"dateTo":e_mm,"dept":"RP"},
+                {"searchTerm":dt,"dateFrom":s_mm,"dateTo":e_mm},
+            ]:
+                r2 = get(sess, CLERK_BASE+"/results", params=params)
+                if r2:
+                    recs = parse_html(r2.text, dt, DOC_TYPE_MAP[dt])
+                    if recs: break
+        print(f"    → {len(recs)} records")
         all_recs.extend(recs)
-        time.sleep(1)
+        time.sleep(0.8)
 
-    # ── Dedup ─────────────────────────────────────────────────────────────
-    seen   = set()
-    unique = []
+    print(f"\n  Requests total: {len(all_recs)}")
+    print("🎭 Running Playwright for full coverage …")
+    pw = await playwright_scrape(list(DOC_TYPE_MAP.keys()), s_mm, e_mm)
+    print(f"  Playwright total: {len(pw)}")
+    all_recs.extend(pw)
+
+    # Dedup
+    seen=set(); unique=[]
     for r in all_recs:
-        key = f"{r['doc_num']}|{r['doc_type']}"
-        if key not in seen:
-            seen.add(key)
-            unique.append(r)
-    print(f"\n✅ Total unique records: {len(unique)}")
+        k=f"{r.get('doc_num','')}|{r.get('doc_type','')}"
+        if k and k!="|" and k not in seen:
+            seen.add(k); unique.append(r)
 
-    # ── Enrich + score ────────────────────────────────────────────────────
-    with_address = 0
-    week_cutoff  = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
+    # Filter to date window — keep records in window OR with no date
+    in_window=[]
     for r in unique:
-        hit = parcel.lookup(r.get("owner",""))
-        if hit:
-            r.update(hit)
-            with_address += 1
-        r["flags"], r["score"] = score_record(r, week_cutoff)
+        fd=r.get("filed","")
+        if not fd or fd>=s_iso: in_window.append(r)
 
-    unique.sort(key=lambda x: x["score"], reverse=True)
-    print(f"   With address: {with_address}")
+    print(f"\n✅ Unique: {len(unique)}  |  In window: {len(in_window)}")
+    unique=in_window
 
-    # ── Save ──────────────────────────────────────────────────────────────
-    payload = {
-        "fetched_at":   datetime.utcnow().isoformat() + "Z",
-        "source":       "Bexar County Clerk / BCAD",
-        "data_range":   f"{start_iso} to {end_iso}",
-        "total":        len(unique),
-        "with_address": with_address,
-        "records":      unique,
+    # Enrich
+    with_addr=0
+    for r in unique:
+        hit=parcel.lookup(r.get("owner",""))
+        if hit: r.update(hit); with_addr+=1
+        r["flags"],r["score"]=score(r, s_iso)
+
+    unique.sort(key=lambda x:x["score"],reverse=True)
+    print(f"   With address: {with_addr}")
+
+    payload={
+        "fetched_at":datetime.utcnow().isoformat()+"Z",
+        "source":"Bexar County Clerk / BCAD",
+        "data_range":f"{s_iso} to {e_iso}",
+        "total":len(unique),"with_address":with_addr,
+        "records":unique,
     }
 
-    for dest in [DASH_DIR / "records.json", DATA_DIR / "records.json"]:
-        dest.write_text(json.dumps(payload, indent=2, default=str))
+    for dest in [DASH_DIR/"records.json", DATA_DIR/"records.json"]:
+        dest.write_text(json.dumps(payload,indent=2,default=str))
         print(f"💾 {dest}")
 
-    export_csv(unique, DATA_DIR / "leads.csv")
-    print(f"📊 {DATA_DIR / 'leads.csv'}")
-    print(f"\n🎉 Done. {len(unique)} leads saved.\n")
+    export_csv(unique, DATA_DIR/"leads.csv")
+    print(f"📊 {DATA_DIR/'leads.csv'}")
+    print(f"\n🎉 Done — {len(unique)} leads | {with_addr} with address.\n")
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     asyncio.run(main())
