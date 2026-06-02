@@ -17,7 +17,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -52,11 +52,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
           git add dashboard/records.json data/records.json data/leads.csv || true
           git diff --cached --quiet || git commit -m "chore: update leads $(date -u +%Y-%m-%d)"
-          git push --force-with-lease || git pull --rebase && git push
+          git push
 
-      - name: Upload Paggit push --force-with-lease || git pull --rebase && git pushes artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dashboard/
