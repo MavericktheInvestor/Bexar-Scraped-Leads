@@ -48,14 +48,15 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
 
-      - name: Commit and push updated records
+          - name: Commit and push updated records
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
+          git fetch origin main
+          git reset --hard origin/main
           git add dashboard/records.json data/records.json data/leads.csv || true
           git diff --cached --quiet || git commit -m "chore: update leads $(date -u +%Y-%m-%d)"
-          git push
+          git push origin main
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
