@@ -35,7 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 lxml dbfread playwright
 
-      - name: Install Playwright + Chromium
+      - name: Install Playwright and Chromium
         run: python -m playwright install --with-deps chromium
 
       - name: Create output directories
@@ -48,7 +48,7 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
 
-          - name: Commit and push updated records
+      - name: Commit and push updated records
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
