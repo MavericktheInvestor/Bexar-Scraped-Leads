@@ -1,13 +1,10 @@
 """
-Bexar County Motivated Seller Lead Scraper v7
+Bexar County Motivated Seller Lead Scraper v8
 ==============================================
-Key fixes from log analysis:
-  - 650 records found but 0 in window = date filter too strict
-  - Keep records with no date OR date in window (don't discard undated)
-  - Browser crashing = reuse single page, add memory limits
-  - BCAD failing = use Bexar CAD open data API instead
-  - Confirmed selectors: .basicSearchInputBox, .react-datepicker__input,
-    button[type='submit'], Advanced Search link
+Key fix: Search ALL doc types in ONE pass instead of 16 separate searches.
+The portal's Quick Search accepts a doc type code and returns all matching
+records. We do one broad date-range search, capture ALL API responses,
+then filter/categorize by doc type from the response data.
 """
 
 import asyncio, json, re, csv, time, io, zipfile, tempfile, os
@@ -26,7 +23,6 @@ except ImportError:
 CLERK_BASE    = "https://bexar.tx.publicsearch.us"
 LOOKBACK_DAYS = 7
 MAX_RETRIES   = 3
-RETRY_DELAY   = 4
 
 DOC_TYPE_MAP = {
     "LP":"Lis Pendens","NOFC":"Notice of Foreclosure","TAXDEED":"Tax Deed",
@@ -36,6 +32,9 @@ DOC_TYPE_MAP = {
     "MEDLN":"Medicaid Lien","PRO":"Probate",
     "NOC":"Notice of Commencement","RELLP":"Release Lis Pendens",
 }
+
+# Doc types we want — used for filtering results
+TARGET_TYPES = set(DOC_TYPE_MAP.keys())
 
 ROOT     = Path(__file__).resolve().parent.parent
 DASH_DIR = ROOT / "dashboard"
@@ -63,9 +62,8 @@ def to_iso(raw):
     return raw
 
 def safe(v): return str(v).strip() if v else ""
-
 def parse_amt(raw):
-    c = re.sub(r"[^\d.]", "", str(raw or ""))
+    c = re.sub(r"[^\d.]","",str(raw or ""))
     try: return float(c)
     except: return 0.0
 
@@ -84,33 +82,32 @@ def make_session():
     s = requests.Session()
     s.headers.update({
         "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                     "Chrome/124.0.0.0 Safari/537.36",
+                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept":"*/*","Accept-Language":"en-US,en;q=0.9",
     })
     return s
 
-# ── Parse API JSON body ───────────────────────────────────────────────────────
-def parse_api_body(body, doc_type):
-    cat  = DOC_TYPE_MAP.get(doc_type, doc_type)
+# ── Parse API JSON ─────────────────────────────────────────────────────────────
+def parse_api_body(body):
+    """Parse any API response body — returns list of record dicts."""
     recs = []
     if isinstance(body, list):
         items = body
     elif isinstance(body, dict):
-        items = (body.get("hits") or body.get("data") or
-                 body.get("results") or body.get("instruments") or
-                 body.get("records") or body.get("rows") or [])
+        items = (body.get("hits") or body.get("data") or body.get("results") or
+                 body.get("instruments") or body.get("records") or body.get("rows") or [])
         if isinstance(items, dict):
             items = items.get("hits") or items.get("data") or []
     else:
         return []
+
     for row in items:
-        if isinstance(row, dict):
-            rec = _api_row(row, doc_type, cat)
-            if rec: recs.append(rec)
+        if not isinstance(row, dict): continue
+        rec = _row_to_rec(row)
+        if rec: recs.append(rec)
     return recs
 
-def _api_row(row, doc_type, cat):
+def _row_to_rec(row):
     try:
         doc_num = safe(
             row.get("instrumentNumber") or row.get("docNumber") or
@@ -118,6 +115,26 @@ def _api_row(row, doc_type, cat):
             row.get("documentNumber") or ""
         )
         if not doc_num: return None
+
+        # Get doc type from the record itself
+        doc_type = safe(
+            row.get("docType") or row.get("documentType") or
+            row.get("type") or row.get("instrumentType") or ""
+        ).upper().strip()
+
+        # Only keep our target types — skip everything else
+        if doc_type and doc_type not in TARGET_TYPES:
+            # Try prefix match (e.g. "LP-CIVIL" → "LP")
+            matched = next((t for t in TARGET_TYPES if doc_type.startswith(t)), None)
+            if matched:
+                doc_type = matched
+            else:
+                return None  # not a type we care about
+
+        if not doc_type:
+            doc_type = "LN"  # default fallback
+
+        cat = DOC_TYPE_MAP.get(doc_type, doc_type)
 
         filed = to_iso(
             row.get("filedDate") or row.get("recordedDate") or
@@ -135,28 +152,21 @@ def _api_row(row, doc_type, cat):
                         if isinstance(item, dict):
                             n = (item.get("name") or item.get("fullName") or
                                  (item.get("firstName","")+" "+item.get("lastName","")).strip())
-                            parts.append(n.strip())
-                        elif isinstance(item, str):
+                            if n.strip(): parts.append(n.strip())
+                        elif isinstance(item, str) and item.strip():
                             parts.append(item.strip())
-                    result = "; ".join(p for p in parts if p)
-                    if result: return result
+                    if parts: return "; ".join(parts)
                 elif isinstance(val, str) and val.strip():
                     return val.strip()
             return ""
 
-        owner   = names(["grantors","grantor","seller","debtor","party1","owners"])
-        grantee = names(["grantees","grantee","lender","trustee","plaintiff","creditor"])
+        owner   = names(["grantors","grantor","seller","debtor","party1","owners","grantorName"])
+        grantee = names(["grantees","grantee","lender","trustee","plaintiff","creditor","granteeName"])
         amount  = parse_amt(row.get("consideration") or row.get("amount") or 0)
         legal   = safe(row.get("legalDescription") or row.get("legal") or "")
+        inst    = safe(row.get("id") or row.get("instrumentId") or doc_num)
 
-        # Infer doc type from response
-        inferred = safe(row.get("docType") or row.get("documentType") or "").upper()
-        if inferred and inferred in DOC_TYPE_MAP:
-            doc_type = inferred
-            cat = DOC_TYPE_MAP[doc_type]
-
-        inst = safe(row.get("id") or row.get("instrumentId") or doc_num)
-        rec  = blank_rec(doc_type)
+        rec = blank_rec(doc_type)
         rec.update({
             "doc_num":   doc_num,
             "filed":     filed,
@@ -168,16 +178,15 @@ def _api_row(row, doc_type, cat):
         })
         return rec
     except Exception as e:
-        print(f"    ⚠  row: {e}")
+        print(f"  ⚠  row: {e}")
         return None
 
-# ── HTML table parser ─────────────────────────────────────────────────────────
-def parse_html_table(html, doc_type):
-    cat  = DOC_TYPE_MAP.get(doc_type, doc_type)
+# ── HTML parser ────────────────────────────────────────────────────────────────
+def parse_html(html):
+    """Parse HTML results table — returns list of dicts with raw data."""
     recs = []
+    if re.search(r"loading results|please wait", html, re.I): return []
     soup = BeautifulSoup(html, "lxml")
-    if re.search(r"loading results|please wait", html, re.I):
-        return []
     for tbl in soup.find_all("table"):
         hdrs = [th.get_text(" ",strip=True).lower() for th in tbl.find_all("th")]
         if len(hdrs) < 2: continue
@@ -198,6 +207,11 @@ def parse_html_table(html, doc_type):
                 if h: url = h if h.startswith("http") else CLERK_BASE+h; break
             dn = col(tr,"instrument","doc #","doc#","book","number") or cells[0].get_text(strip=True)
             if not dn or re.search(r"loading|please wait",dn,re.I): continue
+
+            raw_type = col(tr,"type","doc type").upper().strip()
+            doc_type = raw_type if raw_type in TARGET_TYPES else "LN"
+            cat      = DOC_TYPE_MAP.get(doc_type, doc_type)
+
             rec = blank_rec(doc_type)
             rec.update({
                 "doc_num":   dn,
@@ -211,15 +225,14 @@ def parse_html_table(html, doc_type):
             recs.append(rec)
     return recs
 
-# ── BCAD Address Lookup (Socrata Open Data API) ───────────────────────────────
+# ── BCAD Parcel Lookup ─────────────────────────────────────────────────────────
 class ParcelLookup:
-    """
-    Uses the Bexar CAD Socrata Open Data API instead of the unreliable bulk download.
-    Endpoint: https://opendata.bcad.org/resource/  (free, no auth needed)
-    Falls back to bulk DBF if Socrata is unavailable.
-    """
-    SOCRATA_URL = "https://opendata.bcad.org/resource/tpvk-6xh3.json"
-    BULK_URLS   = [
+    # Socrata Open Data API — free, reliable, no bulk download needed
+    SOCRATA_ENDPOINTS = [
+        "https://opendata.bcad.org/resource/tpvk-6xh3.json",
+        "https://opendata.bcad.org/resource/real-property.json",
+    ]
+    BULK_URLS = [
         "https://www.bcad.org/clientdb/PropertyExport.zip",
         "https://www.bcad.org/Downloads/PropertyExport.zip",
     ]
@@ -230,116 +243,93 @@ class ParcelLookup:
 
     def _load(self):
         sess = make_session()
+        # Try Socrata first
+        for ep in self.SOCRATA_ENDPOINTS:
+            print(f"  ↓ BCAD Socrata: {ep}")
+            try:
+                offset=0; limit=50000; loaded=0
+                while True:
+                    r = sess.get(ep, params={"$limit":limit,"$offset":offset}, timeout=60)
+                    r.raise_for_status()
+                    rows = r.json()
+                    if not rows: break
+                    for row in rows: self._index_socrata(row)
+                    loaded += len(rows)
+                    if len(rows) < limit: break
+                    offset += limit; time.sleep(0.5)
+                if self.idx:
+                    print(f"  ✅ Socrata: {len(self.idx):,} entries ({loaded:,} parcels)")
+                    return
+            except Exception as e:
+                print(f"  ✗ Socrata: {e}")
 
-        # Try Socrata first (fast, no rate limit)
-        print("  ↓ Trying BCAD Socrata API …")
-        try:
-            # Get all records in batches of 50000
-            offset = 0
-            limit  = 50000
-            loaded = 0
-            while True:
-                r = sess.get(
-                    self.SOCRATA_URL,
-                    params={"$limit": limit, "$offset": offset},
-                    timeout=60
-                )
-                r.raise_for_status()
-                rows = r.json()
-                if not rows: break
-                for row in rows:
-                    self._index_socrata_row(row)
-                loaded += len(rows)
-                if len(rows) < limit: break
-                offset += limit
-                time.sleep(0.5)
-            if self.idx:
-                print(f"  ✅ Socrata: {len(self.idx):,} index entries from {loaded:,} parcels")
-                return
-        except Exception as e:
-            print(f"  ⚠  Socrata: {e}")
-
-        # Fallback: bulk DBF download
-        if not HAS_DBF:
-            print("  ⚠  No parcel data available"); return
-
-        raw = None
+        # Fallback bulk download
+        if not HAS_DBF: print("  ⚠  No parcel data"); return
+        raw=None
         for url in self.BULK_URLS:
             print(f"  ↓ BCAD bulk: {url}")
             try:
                 time.sleep(3)
-                r = sess.get(url, timeout=120, stream=True)
-                r.raise_for_status()
-                buf = io.BytesIO()
+                r = sess.get(url,timeout=120,stream=True); r.raise_for_status()
+                buf=io.BytesIO()
                 for chunk in r.iter_content(65536): buf.write(chunk)
-                raw = buf.getvalue()
+                raw=buf.getvalue()
                 print(f"  ✅ {len(raw):,} bytes"); break
-            except Exception as e:
-                print(f"  ✗ {e}"); time.sleep(5)
-
+            except Exception as e: print(f"  ✗ {e}"); time.sleep(5)
         if not raw: print("  ⚠  BCAD unavailable"); return
-
         try:
             zf   = zipfile.ZipFile(io.BytesIO(raw))
-            dbfs = sorted(
-                [n for n in zf.namelist() if n.lower().endswith(".dbf")],
-                key=lambda n: zf.getinfo(n).file_size, reverse=True
-            )
+            dbfs = sorted([n for n in zf.namelist() if n.lower().endswith(".dbf")],
+                          key=lambda n:zf.getinfo(n).file_size,reverse=True)
             if not dbfs: return
             with tempfile.TemporaryDirectory() as tmp:
-                zf.extractall(tmp)
-                self._index_dbf(os.path.join(tmp, dbfs[0]))
-            print(f"  ✅ DBF index: {len(self.idx):,} entries")
-        except Exception as e:
-            print(f"  ✗ {e}")
+                zf.extractall(tmp); self._index_dbf(os.path.join(tmp,dbfs[0]))
+            print(f"  ✅ DBF: {len(self.idx):,} entries")
+        except Exception as e: print(f"  ✗ {e}")
 
-    def _index_socrata_row(self, row):
-        """Index a row from the Socrata API."""
-        owner = (
-            row.get("owner_name") or row.get("owner") or
-            row.get("ownername") or row.get("name") or ""
-        ).upper().strip()
+    def _index_socrata(self, row):
+        owner = (row.get("owner_name") or row.get("owner") or
+                 row.get("ownername") or row.get("name") or "").upper().strip()
         if not owner: return
         p = {
-            "prop_address": row.get("situs_address") or row.get("site_address") or row.get("prop_address",""),
+            "prop_address": row.get("situs_address") or row.get("site_address",""),
             "prop_city":    row.get("situs_city")    or row.get("site_city",""),
             "prop_state":   "TX",
             "prop_zip":     row.get("situs_zip")     or row.get("site_zip",""),
-            "mail_address": row.get("mail_address")  or row.get("mailing_address",""),
+            "mail_address": row.get("mail_address",""),
             "mail_city":    row.get("mail_city",""),
             "mail_state":   row.get("mail_state","TX"),
             "mail_zip":     row.get("mail_zip",""),
         }
-        for k in self._variants(owner): self.idx.setdefault(k, p)
+        for k in self._variants(owner): self.idx.setdefault(k,p)
 
     def _index_dbf(self, path):
         try:
-            for row in DBF(path, ignore_missing_memofile=True, encoding="latin-1"):
-                r = {k.upper(): safe(v) for k,v in row.items()}
-                owner = (r.get("OWNER") or r.get("OWN1") or r.get("OWNERNAME","")).upper().strip()
+            for row in DBF(path,ignore_missing_memofile=True,encoding="latin-1"):
+                r={k.upper():safe(v) for k,v in row.items()}
+                owner=(r.get("OWNER") or r.get("OWN1") or r.get("OWNERNAME","")).upper().strip()
                 if not owner: continue
-                p = {
-                    "prop_address": r.get("SITE_ADDR") or r.get("SITEADDR",""),
-                    "prop_city":    r.get("SITE_CITY",""),
-                    "prop_state":   "TX",
-                    "prop_zip":     r.get("SITE_ZIP")  or r.get("SITEZIP",""),
-                    "mail_address": r.get("ADDR_1")    or r.get("MAILADR1",""),
-                    "mail_city":    r.get("CITY")      or r.get("MAILCITY",""),
-                    "mail_state":   r.get("STATE","TX"),
-                    "mail_zip":     r.get("ZIP")       or r.get("MAILZIP",""),
+                p={
+                    "prop_address":r.get("SITE_ADDR") or r.get("SITEADDR",""),
+                    "prop_city":   r.get("SITE_CITY",""),
+                    "prop_state":  "TX",
+                    "prop_zip":    r.get("SITE_ZIP")  or r.get("SITEZIP",""),
+                    "mail_address":r.get("ADDR_1")    or r.get("MAILADR1",""),
+                    "mail_city":   r.get("CITY")      or r.get("MAILCITY",""),
+                    "mail_state":  r.get("STATE","TX"),
+                    "mail_zip":    r.get("ZIP")        or r.get("MAILZIP",""),
                 }
-                for k in self._variants(owner): self.idx.setdefault(k, p)
+                for k in self._variants(owner): self.idx.setdefault(k,p)
         except Exception as e: print(f"  ✗ DBF: {e}")
 
     @staticmethod
     def _variants(n):
-        n = re.sub(r"\s+"," ",n).strip().upper()
-        v = {n}
+        n=re.sub(r"\s+"," ",n).strip().upper(); v={n}
         if "," in n:
-            pts = [p.strip() for p in n.split(",",1)]
+            pts=[p.strip() for p in n.split(",",1)]
             if len(pts)==2: v.add(f"{pts[1]} {pts[0]}"); v.add(pts[0]); v.add(pts[1])
         else:
-            pts = n.split()
+            pts=n.split()
             if len(pts)>=2:
                 v.add(f"{pts[-1]},{' '.join(pts[:-1])}")
                 v.add(f"{pts[-1]} {' '.join(pts[:-1])}")
@@ -348,129 +338,159 @@ class ParcelLookup:
     def lookup(self, owner):
         if not owner: return {}
         for k in self._variants(owner.upper()):
-            h = self.idx.get(k)
+            h=self.idx.get(k)
             if h: return h
         return {}
 
-# ── Playwright scraper ────────────────────────────────────────────────────────
-async def playwright_scrape(doc_types, start_mm, end_mm, start_iso):
+# ── Playwright: ONE broad search, capture everything ──────────────────────────
+async def playwright_scrape(start_mm, end_mm, start_iso):
     from playwright.async_api import async_playwright, TimeoutError as PWTimeout
     all_recs = []
-    print("\n🎭 Playwright scrape …")
+    print("\n🎭 Playwright: single broad search …")
 
     async with async_playwright() as p:
-        # Launch with memory limits to prevent crash
         browser = await p.chromium.launch(
             headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--memory-pressure-off",
-                "--js-flags=--max-old-space-size=512",
-            ]
+            args=["--no-sandbox","--disable-dev-shm-usage",
+                  "--disable-gpu","--memory-pressure-off"]
         )
         ctx = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             viewport={"width":1280,"height":900},
         )
         page = await ctx.new_page()
 
-        # Intercept all JSON API responses
+        # Capture every JSON response
         api_responses = []
         async def on_response(resp):
             try:
                 ct = resp.headers.get("content-type","")
-                if "json" in ct and resp.status == 200:
+                if "json" in ct and resp.status==200:
                     url = resp.url
                     if any(k in url.lower() for k in
-                           ["search","instrument","record","result","query","find","api"]):
+                           ["search","instrument","record","result","query","api","find"]):
                         body = await resp.json()
                         n = _count(body)
                         if n > 0:
                             api_responses.append({"url":url,"body":body})
-                            print(f"    📡 {n} items ← {url[:80]}")
-            except Exception:
-                pass
+                            print(f"  📡 {n} items ← {url[:80]}")
+            except Exception: pass
         page.on("response", on_response)
 
         try:
-            # ── Load portal ───────────────────────────────────────────────
             print("  → Loading portal …")
             await page.goto(CLERK_BASE, timeout=45000)
             await page.wait_for_load_state("networkidle", timeout=25000)
             await asyncio.sleep(3)
-            print(f"  ✅ Loaded: {await page.title()}")
+            print(f"  ✅ {await page.title()}")
 
-            # ── Dismiss popup ─────────────────────────────────────────────
+            # Dismiss popup
             for txt in ["Close","Accept","I Agree","Continue","OK"]:
                 try:
-                    btn = page.get_by_role("button", name=re.compile(f"^{txt}$",re.I))
+                    btn = page.get_by_role("button",name=re.compile(f"^{txt}$",re.I))
                     if await btn.count()>0 and await btn.first.is_visible():
                         await btn.first.click(); await asyncio.sleep(1.5)
                         print(f"  ✅ Dismissed: {txt}"); break
                 except Exception: pass
 
-            # ── Set date range ONCE before searching ──────────────────────
-            # Log confirmed: Found 2 date inputs, dates set successfully
-            await _set_dates(page, start_mm, end_mm)
+            # ── Set date range ────────────────────────────────────────────
+            date_inputs = await page.query_selector_all(".react-datepicker__input")
+            print(f"  Found {len(date_inputs)} date inputs")
+            if len(date_inputs) >= 2:
+                # FROM
+                await date_inputs[0].click()
+                await page.keyboard.press("Control+a")
+                await page.keyboard.press("Delete")
+                await date_inputs[0].fill(start_mm)
+                await asyncio.sleep(0.4)
+                await page.keyboard.press("Escape")
+                print(f"  ✅ Date FROM: {start_mm}")
+                # TO
+                await date_inputs[1].click()
+                await page.keyboard.press("Control+a")
+                await page.keyboard.press("Delete")
+                await date_inputs[1].fill(end_mm)
+                await asyncio.sleep(0.4)
+                await page.keyboard.press("Escape")
+                print(f"  ✅ Date TO: {end_mm}")
 
-            # ── Click Advanced Search ─────────────────────────────────────
-            for sel in ["a:has-text('Advanced Search')","text=Advanced Search"]:
+            # ── Leave search box EMPTY and just search by date ────────────
+            # This returns ALL records in the date window across ALL doc types
+            # Much faster than 16 separate searches
+            print("  → Submitting broad date search …")
+            for sel in ["button[type='submit']","button:has-text('Search')"]:
                 try:
                     el = await page.query_selector(sel)
                     if el and await el.is_visible():
-                        await el.click()
-                        await page.wait_for_load_state("networkidle",timeout=10000)
-                        await asyncio.sleep(2)
-                        print("  ✅ Advanced Search active")
-                        break
+                        await el.click(); break
                 except Exception: pass
 
-            # ── Search each doc type ──────────────────────────────────────
-            for doc_type in doc_types:
-                cat = DOC_TYPE_MAP.get(doc_type,doc_type)
-                print(f"\n  🔍 [{doc_type}] {cat}")
-                api_responses.clear()
-
-                try:
-                    recs = await _search_one(
-                        page, doc_type, cat, start_mm, end_mm, start_iso
-                    )
-                except Exception as e:
-                    print(f"    ✗ crashed: {e}")
-                    # Reload page and continue
-                    try:
-                        await page.goto(CLERK_BASE, timeout=30000)
-                        await page.wait_for_load_state("networkidle",timeout=15000)
-                        await asyncio.sleep(2)
-                        await _set_dates(page, start_mm, end_mm)
-                    except Exception:
-                        pass
-                    recs = []
-
-                # Prefer API-intercepted records (more complete data)
-                api_recs = []
-                for resp in api_responses:
-                    api_recs.extend(parse_api_body(resp["body"], doc_type))
-
-                if api_recs:
-                    print(f"    ✅ API: {len(api_recs)} records")
-                    all_recs.extend(api_recs)
-                elif recs:
-                    print(f"    ✅ HTML: {len(recs)} records")
-                    all_recs.extend(recs)
-                else:
-                    print(f"    → 0 records")
-
+            # Wait for results
+            await asyncio.sleep(4)
+            for i in range(20):
+                html = await page.content()
+                if re.search(r"loading results|please wait", html, re.I):
+                    await asyncio.sleep(1); continue
+                soup  = BeautifulSoup(html,"lxml")
+                trows = [r for r in soup.find_all("tr") if len(r.find_all("td"))>=2]
+                if trows or api_responses:
+                    print(f"  ✅ Results ready ({len(trows)} rows, {len(api_responses)} API calls)")
+                    break
                 await asyncio.sleep(1)
 
+            # Parse first page
+            html      = await page.content()
+            html_recs = parse_html(html)
+            all_recs.extend(html_recs)
+            print(f"  Page 1: {len(html_recs)} HTML records")
+
+            # Paginate through ALL pages
+            page_num = 2
+            while page_num <= 200:  # safety cap
+                nxt = None
+                for ns in [
+                    "button[aria-label*='next' i]:not([disabled])",
+                    "a[aria-label*='next' i]",
+                    "li.next:not(.disabled) a",
+                    "button:has-text('›'):not([disabled])",
+                    "button:has-text('Next'):not([disabled])",
+                ]:
+                    try:
+                        el = await page.query_selector(ns)
+                        if el and await el.is_visible():
+                            cls = await el.get_attribute("class") or ""
+                            dis = await el.get_attribute("disabled")
+                            ard = await el.get_attribute("aria-disabled")
+                            if not dis and ard!="true" and "disabled" not in cls:
+                                nxt=el; break
+                    except Exception: pass
+
+                if not nxt:
+                    print(f"  No more pages after {page_num-1}")
+                    break
+
+                await nxt.click(); await asyncio.sleep(2)
+                for _ in range(10):
+                    h = await page.content()
+                    if not re.search(r"loading|please wait",h,re.I): break
+                    await asyncio.sleep(1)
+
+                more = parse_html(await page.content())
+                if not more: break
+                all_recs.extend(more)
+                print(f"  Page {page_num}: +{len(more)} records")
+                page_num += 1
+
+            # Also grab everything from API interception
+            api_recs = []
+            for resp in api_responses:
+                api_recs.extend(parse_api_body(resp["body"]))
+            print(f"\n  API intercepted: {len(api_recs)} records")
+            all_recs.extend(api_recs)
+
         except Exception as e:
-            print(f"\n  ✗ Fatal: {e}")
+            print(f"\n  ✗ {e}")
             import traceback; traceback.print_exc()
         finally:
             await browser.close()
@@ -482,145 +502,14 @@ def _count(body):
     if isinstance(body,list): return len(body)
     if isinstance(body,dict):
         for k in ["hits","data","results","instruments","records","rows"]:
-            v = body.get(k)
+            v=body.get(k)
             if isinstance(v,list) and v: return len(v)
             if isinstance(v,dict):
-                inner = v.get("hits") or v.get("data") or []
+                inner=v.get("hits") or v.get("data") or []
                 if inner: return len(inner)
     return 0
 
-
-async def _set_dates(page, start_mm, end_mm):
-    """Set date range fields. Log confirmed these work."""
-    from playwright.async_api import TimeoutError as PWTimeout
-    try:
-        date_inputs = await page.query_selector_all(".react-datepicker__input")
-        print(f"  Found {len(date_inputs)} date inputs")
-        if len(date_inputs) >= 2:
-            # FROM date (index 0)
-            await date_inputs[0].click()
-            await page.keyboard.press("Control+a")
-            await page.keyboard.press("Delete")
-            await date_inputs[0].fill(start_mm)
-            await asyncio.sleep(0.3)
-            await page.keyboard.press("Escape")
-            print(f"  ✅ Date FROM set: {start_mm}")
-
-            # TO date (index 1)
-            await date_inputs[1].click()
-            await page.keyboard.press("Control+a")
-            await page.keyboard.press("Delete")
-            await date_inputs[1].fill(end_mm)
-            await asyncio.sleep(0.3)
-            await page.keyboard.press("Escape")
-            print(f"  ✅ Date TO set: {end_mm}")
-        else:
-            print(f"  ⚠  Expected 2 date inputs, found {len(date_inputs)}")
-    except Exception as e:
-        print(f"  ⚠  Date set error: {e}")
-
-
-async def _search_one(page, doc_type, cat, start_mm, end_mm, start_iso):
-    """Search for one document type using confirmed selectors."""
-    from playwright.async_api import TimeoutError as PWTimeout
-    recs = []
-
-    for attempt in range(MAX_RETRIES):
-        try:
-            # ── Fill search box with doc type ─────────────────────────────
-            # Confirmed: .basicSearchInputBox works
-            filled = False
-            for sel in [
-                ".basicSearchInputBox",
-                "input[placeholder*='grantor' i]",
-                "input[placeholder*='doc type' i]",
-                "input[placeholder*='search' i]",
-            ]:
-                try:
-                    el = await page.query_selector(sel)
-                    if el and await el.is_visible():
-                        await el.click()
-                        await page.keyboard.press("Control+a")
-                        await page.keyboard.press("Delete")
-                        await el.fill(doc_type)
-                        filled = True
-                        break
-                except Exception: pass
-
-            # Re-set dates (they may have reset after previous search)
-            await _set_dates(page, start_mm, end_mm)
-
-            # ── Submit ────────────────────────────────────────────────────
-            for sel in [
-                "button[type='submit']",
-                "button:has-text('Search')",
-                ".css-1ivgvwc",
-            ]:
-                try:
-                    el = await page.query_selector(sel)
-                    if el and await el.is_visible():
-                        await el.click()
-                        break
-                except Exception: pass
-
-            # ── Wait for results ──────────────────────────────────────────
-            await asyncio.sleep(3)
-            for _ in range(15):
-                html = await page.content()
-                if re.search(r"loading results|please wait", html, re.I):
-                    await asyncio.sleep(1); continue
-                soup  = BeautifulSoup(html,"lxml")
-                trows = [r for r in soup.find_all("tr") if len(r.find_all("td"))>=2]
-                if trows:
-                    print(f"    ✅ {len(trows)} rows loaded")
-                    break
-                await asyncio.sleep(1)
-
-            # ── Parse ─────────────────────────────────────────────────────
-            html      = await page.content()
-            page_recs = parse_html_table(html, doc_type)
-            recs.extend(page_recs)
-
-            # ── Paginate ──────────────────────────────────────────────────
-            for pg in range(50):
-                nxt = None
-                for ns in [
-                    "button[aria-label*='next' i]:not([disabled])",
-                    "a[aria-label*='next' i]",
-                    "li.next:not(.disabled) a",
-                    "button:has-text('›'):not([disabled])",
-                ]:
-                    try:
-                        el = await page.query_selector(ns)
-                        if el and await el.is_visible():
-                            cls = await el.get_attribute("class") or ""
-                            dis = await el.get_attribute("disabled")
-                            ard = await el.get_attribute("aria-disabled")
-                            if not dis and ard!="true" and "disabled" not in cls:
-                                nxt=el; break
-                    except Exception: pass
-                if not nxt: break
-                await nxt.click(); await asyncio.sleep(2)
-                for _ in range(10):
-                    h = await page.content()
-                    if not re.search(r"loading|please wait",h,re.I): break
-                    await asyncio.sleep(1)
-                more = parse_html_table(await page.content(), doc_type)
-                if not more: break
-                recs.extend(more)
-
-            return recs
-
-        except PWTimeout:
-            if attempt < MAX_RETRIES-1:
-                print(f"    ↻ timeout retry {attempt+1}")
-                await asyncio.sleep(RETRY_DELAY)
-        except Exception as e:
-            print(f"    ✗ {e}"); break
-
-    return recs
-
-# ── Scoring ───────────────────────────────────────────────────────────────────
+# ── Scoring ────────────────────────────────────────────────────────────────────
 def score_record(r, cutoff):
     flags=[]; sc=30
     dt=r.get("doc_type",""); a=r.get("amount",0.0)
@@ -639,10 +528,10 @@ def score_record(r, cutoff):
     elif a>50_000: sc+=10
     if r.get("filed","")>=cutoff: flags.append("New this week"); sc+=5
     if r.get("prop_address"): sc+=5
-    sc += 10*len([f for f in flags if f!="New this week"])
-    return flags, min(sc,100)
+    sc+=10*len([f for f in flags if f!="New this week"])
+    return flags,min(sc,100)
 
-# ── CSV ───────────────────────────────────────────────────────────────────────
+# ── CSV ────────────────────────────────────────────────────────────────────────
 def export_csv(records, path):
     fields=["First Name","Last Name",
             "Mailing Address","Mailing City","Mailing State","Mailing Zip",
@@ -683,10 +572,10 @@ def _split(full):
     if len(p)==1: return "",p[0]
     return p[0]," ".join(p[1:])
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ───────────────────────────────────────────────────────────────────────
 async def main():
     print("="*60)
-    print("  Bexar County Motivated Seller Scraper v7")
+    print("  Bexar County Motivated Seller Scraper v8")
     print(f"  {datetime.utcnow().isoformat()} UTC")
     print("="*60)
 
@@ -697,47 +586,39 @@ async def main():
     print("📦 Loading BCAD parcel data …")
     parcel = ParcelLookup()
 
-    print(f"\n🏛  Scraping {len(DOC_TYPE_MAP)} document types …")
-    all_recs = await playwright_scrape(list(DOC_TYPE_MAP.keys()), s_mm, e_mm, s_iso)
+    print("\n🏛  Scraping portal (single broad search) …")
+    all_recs = await playwright_scrape(s_mm, e_mm, s_iso)
 
-    # ── Dedup ─────────────────────────────────────────────────────────────
+    # Dedup
     seen=set(); unique=[]
     for r in all_recs:
         k=f"{r.get('doc_num','').strip()}|{r.get('doc_type','')}"
         if k and k!="|" and k not in seen:
             seen.add(k); unique.append(r)
 
-    # Remove junk doc numbers
-    unique = [r for r in unique if r.get("doc_num") and
-              not re.search(r"loading|please wait|searching",
-                            r.get("doc_num",""),re.I)]
+    # Remove junk
+    unique=[r for r in unique if r.get("doc_num") and
+            not re.search(r"loading|please wait|searching",
+                          r.get("doc_num",""),re.I)]
 
-    # ── Date filter ───────────────────────────────────────────────────────
-    # FIX: Keep records with NO date OR date within window
-    # Do NOT discard undated records — they came from a date-filtered search
-    in_window = []
-    out_window = []
+    # Keep records in window OR undated (search was date-filtered)
+    in_window=[]; out_window=[]
     for r in unique:
-        fd = r.get("filed","")
-        if not fd:
-            # No date — keep it (search was already date-filtered)
-            in_window.append(r)
-        elif fd >= s_iso:
-            in_window.append(r)
-        else:
-            out_window.append(r)
+        fd=r.get("filed","")
+        if not fd or fd>=s_iso: in_window.append(r)
+        else: out_window.append(r)
 
     print(f"\n✅ Unique: {len(unique)}")
-    print(f"   In window (or undated): {len(in_window)}")
+    print(f"   In window / undated: {len(in_window)}")
     print(f"   Outside window (dropped): {len(out_window)}")
-    unique = in_window
+    unique=in_window
 
-    # ── Enrich + score ────────────────────────────────────────────────────
+    # Enrich + score
     with_addr=0
     for r in unique:
-        hit = parcel.lookup(r.get("owner",""))
+        hit=parcel.lookup(r.get("owner",""))
         if hit: r.update(hit); with_addr+=1
-        r["flags"],r["score"] = score_record(r, s_iso)
+        r["flags"],r["score"]=score_record(r,s_iso)
 
     unique.sort(key=lambda x:x["score"],reverse=True)
     print(f"   With address: {with_addr}")
@@ -750,15 +631,13 @@ async def main():
         "with_address": with_addr,
         "records":      unique,
     }
-
-    for dest in [DASH_DIR/"records.json", DATA_DIR/"records.json"]:
+    for dest in [DASH_DIR/"records.json",DATA_DIR/"records.json"]:
         dest.write_text(json.dumps(payload,indent=2,default=str))
         print(f"💾 {dest}")
 
-    export_csv(unique, DATA_DIR/"leads.csv")
+    export_csv(unique,DATA_DIR/"leads.csv")
     print(f"📊 {DATA_DIR/'leads.csv'}")
     print(f"\n🎉 Done — {len(unique)} leads | {with_addr} with address.\n")
-
 
 if __name__=="__main__":
     asyncio.run(main())
