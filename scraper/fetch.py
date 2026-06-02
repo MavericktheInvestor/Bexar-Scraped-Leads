@@ -1,14 +1,26 @@
 """
-Bexar County Motivated Seller Lead Scraper v9
-==============================================
-Root cause found from logs:
-  - 3,850 records scraped across 77 pages ✅
-  - API interception = 0 (portal renders pure HTML, no XHR JSON)
-  - Unique: 1 = doc_num dedup collapsing all rows to same key
-  
-Fix: Print actual HTML table structure to find correct columns,
-     use row index as fallback unique key, 
-     extract doc_type from table data not just header matching.
+Bexar County Motivated Seller Lead Scraper v10
+===============================================
+Column mapping confirmed from live portal inspection (v9 debug output):
+
+Index | Column Name
+  0   | (checkbox)
+  1   | (icon)
+  2   | (icon)
+  3   | Grantor          ← owner
+  4   | Grantee
+  5   | Doc Type         ← doc_type
+  6   | Recorded Date    ← filed
+  7   | Doc Number       ← doc_num  (was wrongly mapped to 8)
+  8   | Book/Volume/Page
+  9   | Legal Description
+ 10   | Lot
+ 11   | Block
+ 12   | NCB
+ 13   | County Block
+ 14   | Property Address ← prop_address (bonus — direct from portal!)
+
+No amount column exists in the search results table.
 """
 
 import asyncio, json, re, csv, time, io, zipfile, tempfile, os
@@ -36,6 +48,16 @@ DOC_TYPE_MAP = {
     "NOC":"Notice of Commencement","RELLP":"Release Lis Pendens",
 }
 TARGET_TYPES = set(DOC_TYPE_MAP.keys())
+
+# Confirmed column indices from live portal debug
+COL_GRANTOR  = 3
+COL_GRANTEE  = 4
+COL_DOCTYPE  = 5
+COL_DATE     = 6
+COL_DOCNUM   = 7
+COL_BOOK     = 8
+COL_LEGAL    = 9
+COL_PROPADDR = 14
 
 ROOT     = Path(__file__).resolve().parent.parent
 DASH_DIR = ROOT / "dashboard"
@@ -73,7 +95,7 @@ def blank_rec(doc_type):
         "cat_label":DOC_TYPE_MAP.get(doc_type,doc_type),
         "filed":"","owner":"","grantee":"","amount":0.0,
         "legal":"","clerk_url":CLERK_BASE,
-        "prop_address":"","prop_city":"","prop_state":"TX","prop_zip":"",
+        "prop_address":"","prop_city":"San Antonio","prop_state":"TX","prop_zip":"",
         "mail_address":"","mail_city":"","mail_state":"TX","mail_zip":"",
         "flags":[],"score":0,
     }
@@ -87,152 +109,119 @@ def make_session():
     })
     return s
 
-# ── HTML parser — debug-first approach ───────────────────────────────────────
-def parse_html(html, debug=False):
+# ── HTML parser with HARDCODED confirmed column indices ───────────────────────
+def parse_html(html):
     """
-    Parse results from the Bexar portal HTML.
-    On first call prints column structure for debugging.
+    Parse results using confirmed column positions from live portal.
+    Col 7 = Doc Number, Col 5 = Doc Type, Col 6 = Date,
+    Col 3 = Grantor, Col 4 = Grantee, Col 9 = Legal, Col 14 = Property Address
     """
     recs = []
     if re.search(r"loading results|please wait", html, re.I):
         return []
+
     soup = BeautifulSoup(html, "lxml")
 
     for tbl in soup.find_all("table"):
         rows = tbl.find_all("tr")
         if len(rows) < 2: continue
 
-        # Get headers
-        hdrs = []
+        # Verify this is the results table by checking for known column names
         header_row = rows[0]
-        for th in header_row.find_all(["th","td"]):
-            hdrs.append(th.get_text(" ", strip=True))
+        header_text = header_row.get_text(" ", strip=True).lower()
+        if not any(k in header_text for k in
+                   ["grantor","grantee","doc type","recorded","doc number"]):
+            continue
 
-        if len(hdrs) < 2: continue
-
-        if debug:
-            print(f"  TABLE COLUMNS ({len(hdrs)}): {hdrs}")
-
-        # Map column names to indices
-        def find_idx(*frags):
-            for frag in frags:
-                for i,h in enumerate(hdrs):
-                    if frag.lower() in h.lower():
-                        return i
-            return -1
-
-        idx_docnum  = find_idx("instrument","doc #","doc#","book","number","docnum","ref #")
-        idx_type    = find_idx("type","doc type","instrument type")
-        idx_date    = find_idx("date","filed","recorded","entry date")
-        idx_grantor = find_idx("grantor","owner","seller","debtor","party 1")
-        idx_grantee = find_idx("grantee","lender","trustee","plaintiff","party 2")
-        idx_amount  = find_idx("amount","consideration","value","debt")
-        idx_legal   = find_idx("legal","description","subdivision")
-
-        if debug:
-            print(f"  MAPPED: docnum={idx_docnum} type={idx_type} "
-                  f"date={idx_date} grantor={idx_grantor} "
-                  f"grantee={idx_grantee} amount={idx_amount}")
-
-        for row_i, tr in enumerate(rows[1:]):
+        for tr in rows[1:]:
             cells = tr.find_all(["td","th"])
-            if len(cells) < 2: continue
+            if len(cells) < 8: continue
 
-            def cell(idx, *fallback_frags):
-                """Get cell text by index, fallback to fragment search."""
-                if idx >= 0 and idx < len(cells):
-                    t = cells[idx].get_text(" ", strip=True)
-                    if t: return t
-                # Fallback: search all cells for fragment
-                for frag in fallback_frags:
-                    for c in cells:
-                        t = c.get_text(" ", strip=True)
-                        if frag.lower() in t.lower() and len(t) < 100:
-                            return t
+            def c(idx):
+                """Get text from cell at index."""
+                if idx < len(cells):
+                    return cells[idx].get_text(" ", strip=True)
                 return ""
 
-            def cell_link(idx):
-                """Get href from cell."""
-                if idx >= 0 and idx < len(cells):
+            def c_link(idx):
+                """Get href from cell at index."""
+                if idx < len(cells):
                     a = cells[idx].find("a")
                     if a and a.get("href"):
                         h = a["href"]
                         return h if h.startswith("http") else CLERK_BASE + h
-                # Try any link in row
-                for c in cells:
-                    a = c.find("a")
+                # Fallback — any link in row
+                for cell in cells:
+                    a = cell.find("a")
                     if a and a.get("href"):
                         h = a["href"]
-                        return h if h.startswith("http") else CLERK_BASE + h
-                return ""
+                        if "doc" in h.lower() or re.search(r"/\d+", h):
+                            return h if h.startswith("http") else CLERK_BASE + h
+                return CLERK_BASE
 
-            # ── Extract doc number ────────────────────────────────────────
-            doc_num = cell(idx_docnum)
-            if not doc_num:
-                # Try every cell — look for one that looks like a doc number
-                # Bexar doc numbers are typically numeric or YYYY-XXXXXXX format
-                for c in cells:
-                    t = c.get_text(strip=True)
-                    if re.match(r"\d{4,}", t) or re.match(r"\d{4}-\d+", t):
-                        doc_num = t
-                        break
-            if not doc_num:
-                # Last resort: use first non-empty cell
-                for c in cells:
-                    t = c.get_text(strip=True)
-                    if t and not re.search(r"loading|please wait", t, re.I):
-                        doc_num = t
-                        break
+            # ── Extract using confirmed indices ───────────────────────────
+            doc_num  = c(COL_DOCNUM)
+            doc_type = c(COL_DOCTYPE).upper().strip()
+            filed    = to_iso(c(COL_DATE))
+            owner    = c(COL_GRANTOR)
+            grantee  = c(COL_GRANTEE)
+            legal    = c(COL_LEGAL)
+            prop_addr= c(COL_PROPADDR)
+            book     = c(COL_BOOK)
 
-            if not doc_num:
+            # Clean doc_num — remove any whitespace/formatting
+            doc_num = re.sub(r"\s+", "", doc_num)
+
+            # Skip empty or invalid rows
+            if not doc_num or doc_num in ("--/--/--","","-"):
+                # Try book/page as fallback doc identifier
+                if book and book not in ("--/--/--",""):
+                    doc_num = book
+                else:
+                    continue
+
+            # Skip loading/header rows
+            if re.search(r"loading|please wait|grantor|grantee|doc type",
+                         doc_num, re.I):
                 continue
 
-            # Skip rows that are clearly not records
-            if re.search(r"^(loading|please wait|no records|showing|page \d)", 
-                        doc_num, re.I):
-                continue
-
-            # ── Extract doc type ──────────────────────────────────────────
-            raw_type = cell(idx_type).upper().strip()
-            # Clean up: remove spaces, get just the code
-            raw_type = re.sub(r"\s+","",raw_type)
-            doc_type = raw_type if raw_type in TARGET_TYPES else ""
-            if not doc_type:
+            # Clean doc type — handle variants like "LP", "LP-CIVIL", "LNMECH"
+            doc_type_clean = re.sub(r"\s+","", doc_type)
+            if doc_type_clean in TARGET_TYPES:
+                final_type = doc_type_clean
+            else:
                 # Try prefix match
-                doc_type = next((t for t in TARGET_TYPES 
-                                if raw_type.startswith(t)), "LN")
+                final_type = next(
+                    (t for t in sorted(TARGET_TYPES, key=len, reverse=True)
+                     if doc_type_clean.startswith(t)),
+                    None
+                )
+                if not final_type:
+                    # Skip records with unknown doc types
+                    continue
 
-            # ── Extract date ──────────────────────────────────────────────
-            filed = to_iso(cell(idx_date))
+            # Build clerk URL from doc number
+            clerk_url = c_link(COL_DOCNUM)
+            if clerk_url == CLERK_BASE:
+                # Try constructing URL from doc number
+                clean_num = doc_num.replace("/","").replace("-","").strip()
+                if clean_num.isdigit():
+                    clerk_url = f"{CLERK_BASE}/doc/{clean_num}"
 
-            # ── Extract names ─────────────────────────────────────────────
-            owner   = cell(idx_grantor)
-            grantee = cell(idx_grantee)
-
-            # ── Extract amount ────────────────────────────────────────────
-            amount = parse_amt(cell(idx_amount))
-
-            # ── Extract legal ─────────────────────────────────────────────
-            legal = cell(idx_legal)
-
-            # ── Get URL ───────────────────────────────────────────────────
-            clerk_url = cell_link(idx_docnum) or cell_link(0) or CLERK_BASE
-
-            rec = blank_rec(doc_type)
+            rec = blank_rec(final_type)
             rec.update({
-                "doc_num":   doc_num,
-                "filed":     filed,
-                "owner":     owner,
-                "grantee":   grantee,
-                "amount":    amount,
-                "legal":     legal,
-                "clerk_url": clerk_url,
+                "doc_num":      doc_num,
+                "filed":        filed,
+                "owner":        owner,
+                "grantee":      grantee,
+                "legal":        legal,
+                "clerk_url":    clerk_url,
+                "prop_address": prop_addr,
             })
             recs.append(rec)
 
-        # Only use first valid table
         if recs:
-            break
+            break  # Use first valid table only
 
     return recs
 
@@ -290,7 +279,7 @@ async def playwright_scrape(start_mm, end_mm, start_iso):
                 await page.keyboard.press("Escape")
                 print(f"  ✅ Date TO: {end_mm}")
 
-            # Submit broad search (empty search box = all records in date range)
+            # Submit broad search
             print("  → Submitting …")
             for sel in ["button[type='submit']","button:has-text('Search')"]:
                 try:
@@ -306,31 +295,27 @@ async def playwright_scrape(start_mm, end_mm, start_iso):
                 if re.search(r"loading results|please wait", html, re.I):
                     await asyncio.sleep(1); continue
                 soup  = BeautifulSoup(html,"lxml")
-                trows = [r for r in soup.find_all("tr") if len(r.find_all("td"))>=2]
+                trows = [r for r in soup.find_all("tr") if len(r.find_all("td"))>=8]
                 if trows:
                     print(f"  ✅ Results ready: {len(trows)} rows")
                     break
                 await asyncio.sleep(1)
 
-            # Parse first page WITH debug to see column structure
-            html = await page.content()
-            page1_recs = parse_html(html, debug=True)
+            # Parse page 1
+            html       = await page.content()
+            page1_recs = parse_html(html)
             all_recs.extend(page1_recs)
-            print(f"  Page 1: {len(page1_recs)} records parsed")
+            print(f"  Page 1: {len(page1_recs)} records")
 
-            # Show sample of what was parsed
+            # Show sample record
             if page1_recs:
-                sample = page1_recs[0]
-                print(f"  SAMPLE RECORD:")
-                print(f"    doc_num  = '{sample['doc_num']}'")
-                print(f"    doc_type = '{sample['doc_type']}'")
-                print(f"    filed    = '{sample['filed']}'")
-                print(f"    owner    = '{sample['owner']}'")
-                print(f"    grantee  = '{sample['grantee']}'")
-                print(f"    amount   = '{sample['amount']}'")
-                print(f"    clerk_url= '{sample['clerk_url']}'")
+                s = page1_recs[0]
+                print(f"  SAMPLE → doc_num='{s['doc_num']}' "
+                      f"type='{s['doc_type']}' filed='{s['filed']}' "
+                      f"owner='{s['owner'][:40]}' "
+                      f"addr='{s['prop_address'][:40]}'")
 
-            # Paginate — cap at 100 pages (5,000 records max)
+            # Paginate all pages
             page_num = 2
             while page_num <= 100:
                 nxt = None
@@ -365,8 +350,10 @@ async def playwright_scrape(start_mm, end_mm, start_iso):
                 if not more: break
                 all_recs.extend(more)
                 if page_num % 10 == 0:
-                    print(f"  Page {page_num}: total so far = {len(all_recs)}")
+                    print(f"  Page {page_num}: total={len(all_recs)}")
                 page_num += 1
+
+            print(f"\n  Total scraped: {len(all_recs)}")
 
         except Exception as e:
             print(f"\n  ✗ {e}")
@@ -384,7 +371,8 @@ class ParcelLookup:
 
     def _load(self):
         sess = make_session()
-        # Try Socrata (skip SSL verify since cert hostname mismatch)
+        # Try Socrata API (skip SSL verify due to cert hostname mismatch)
+        import urllib3; urllib3.disable_warnings()
         for ep in [
             "https://opendata.bcad.org/resource/tpvk-6xh3.json",
             "https://opendata.bcad.org/resource/real-property.json",
@@ -393,21 +381,20 @@ class ParcelLookup:
             try:
                 offset=0; limit=50000; loaded=0
                 while True:
-                    r = sess.get(ep,
-                                 params={"$limit":limit,"$offset":offset},
+                    r = sess.get(ep, params={"$limit":limit,"$offset":offset},
                                  timeout=60, verify=False)
                     r.raise_for_status()
                     rows = r.json()
                     if not rows: break
-                    for row in rows: self._idx_row(row)
+                    for row in rows: self._idx_socrata(row)
                     loaded += len(rows)
-                    if len(rows)<limit: break
-                    offset+=limit; time.sleep(0.3)
+                    if len(rows) < limit: break
+                    offset += limit; time.sleep(0.3)
                 if self.idx:
-                    print(f"  ✅ Socrata: {len(self.idx):,} entries")
+                    print(f"  ✅ Socrata: {len(self.idx):,} entries ({loaded:,} parcels)")
                     return
             except Exception as e:
-                print(f"  ✗ Socrata: {e}")
+                print(f"  ✗ {e}")
 
         # Bulk DBF fallback
         if not HAS_DBF: print("  ⚠  No parcel data"); return
@@ -415,13 +402,12 @@ class ParcelLookup:
             "https://www.bcad.org/clientdb/PropertyExport.zip",
             "https://www.bcad.org/Downloads/PropertyExport.zip",
         ]:
-            print(f"  ↓ BCAD bulk: {url}")
             try:
                 time.sleep(3)
                 r = sess.get(url,timeout=120,stream=True); r.raise_for_status()
                 buf=io.BytesIO()
                 for chunk in r.iter_content(65536): buf.write(chunk)
-                raw=buf.getvalue(); print(f"  ✅ {len(raw):,} bytes")
+                raw=buf.getvalue()
                 zf=zipfile.ZipFile(io.BytesIO(raw))
                 dbfs=sorted([n for n in zf.namelist() if n.lower().endswith(".dbf")],
                             key=lambda n:zf.getinfo(n).file_size,reverse=True)
@@ -430,15 +416,15 @@ class ParcelLookup:
                     zf.extractall(tmp); self._idx_dbf(os.path.join(tmp,dbfs[0]))
                 print(f"  ✅ DBF: {len(self.idx):,} entries"); return
             except Exception as e: print(f"  ✗ {e}"); time.sleep(5)
-        print("  ⚠  BCAD unavailable")
+        print("  ⚠  BCAD unavailable — no address enrichment")
 
-    def _idx_row(self, row):
+    def _idx_socrata(self, row):
         owner=(row.get("owner_name") or row.get("owner") or
                row.get("ownername") or "").upper().strip()
         if not owner: return
         p={
             "prop_address":row.get("situs_address") or row.get("site_address",""),
-            "prop_city":   row.get("situs_city")    or row.get("site_city",""),
+            "prop_city":   row.get("situs_city")    or row.get("site_city","San Antonio"),
             "prop_state":  "TX",
             "prop_zip":    row.get("situs_zip")     or row.get("site_zip",""),
             "mail_address":row.get("mail_address",""),
@@ -456,7 +442,7 @@ class ParcelLookup:
                 if not owner: continue
                 p={
                     "prop_address":r.get("SITE_ADDR") or r.get("SITEADDR",""),
-                    "prop_city":   r.get("SITE_CITY",""),
+                    "prop_city":   r.get("SITE_CITY","San Antonio"),
                     "prop_state":  "TX",
                     "prop_zip":    r.get("SITE_ZIP")  or r.get("SITEZIP",""),
                     "mail_address":r.get("ADDR_1")    or r.get("MAILADR1",""),
@@ -472,7 +458,8 @@ class ParcelLookup:
         n=re.sub(r"\s+"," ",n).strip().upper(); v={n}
         if "," in n:
             pts=[p.strip() for p in n.split(",",1)]
-            if len(pts)==2: v.add(f"{pts[1]} {pts[0]}"); v.add(pts[0]); v.add(pts[1])
+            if len(pts)==2:
+                v.add(f"{pts[1]} {pts[0]}"); v.add(pts[0]); v.add(pts[1])
         else:
             pts=n.split()
             if len(pts)>=2:
@@ -528,7 +515,7 @@ def export_csv(records, path):
                 "Mailing State":r.get("mail_state","TX"),
                 "Mailing Zip":r.get("mail_zip",""),
                 "Property Address":r.get("prop_address",""),
-                "Property City":r.get("prop_city",""),
+                "Property City":r.get("prop_city","San Antonio"),
                 "Property State":r.get("prop_state","TX"),
                 "Property Zip":r.get("prop_zip",""),
                 "Lead Type":r.get("cat_label",""),
@@ -553,7 +540,7 @@ def _split(full):
 # ── Main ───────────────────────────────────────────────────────────────────────
 async def main():
     print("="*60)
-    print("  Bexar County Motivated Seller Scraper v9")
+    print("  Bexar County Motivated Seller Scraper v10")
     print(f"  {datetime.utcnow().isoformat()} UTC")
     print("="*60)
 
@@ -566,42 +553,47 @@ async def main():
 
     print("\n🏛  Scraping portal …")
     all_recs = await playwright_scrape(s_mm, e_mm, s_iso)
-    print(f"\n  Total raw records: {len(all_recs)}")
 
-    # ── Dedup on doc_num + doc_type ────────────────────────────────────────
+    # Dedup on doc_num + doc_type
     seen=set(); unique=[]
     for r in all_recs:
-        # Use doc_num + filed + owner as key to avoid false dedup
-        k = f"{r.get('doc_num','').strip()}|{r.get('filed','')}|{r.get('owner','')[:20]}"
-        if k and k not in seen:
-            seen.add(k); unique.append(r)
-
+        k=f"{r['doc_num']}|{r['doc_type']}"
+        if k not in seen: seen.add(k); unique.append(r)
     print(f"  After dedup: {len(unique)}")
 
-    # ── Filter: keep only target doc types ────────────────────────────────
-    targeted = [r for r in unique if r.get("doc_type") in TARGET_TYPES]
-    print(f"  Target doc types only: {len(targeted)}")
-
-    # ── Date filter: keep in window OR undated ─────────────────────────────
+    # Date filter — keep in window or undated
     in_window=[]; dropped=0
-    for r in targeted:
+    for r in unique:
         fd=r.get("filed","")
         if not fd or fd>=s_iso: in_window.append(r)
         else: dropped+=1
+    print(f"  In window: {len(in_window)}  |  Dropped old: {dropped}")
 
-    print(f"  In window / undated: {len(in_window)}  |  Dropped old: {dropped}")
-
-    # ── Enrich + score ─────────────────────────────────────────────────────
+    # Enrich with parcel data (mailing address)
+    # Note: prop_address already comes direct from portal (col 14)
     with_addr=0
     for r in in_window:
+        # Count as "with address" if we have prop_address from portal
+        if r.get("prop_address"):
+            with_addr+=1
+        # Try to get mailing address from BCAD
         hit=parcel.lookup(r.get("owner",""))
-        if hit: r.update(hit); with_addr+=1
+        if hit:
+            # Only update mailing fields, keep portal prop_address
+            r["mail_address"] = hit.get("mail_address","")
+            r["mail_city"]    = hit.get("mail_city","")
+            r["mail_state"]   = hit.get("mail_state","TX")
+            r["mail_zip"]     = hit.get("mail_zip","")
+            if not r["prop_address"]:
+                r["prop_address"] = hit.get("prop_address","")
+                r["prop_city"]    = hit.get("prop_city","San Antonio")
+                r["prop_zip"]     = hit.get("prop_zip","")
+
         r["flags"],r["score"]=score_record(r,s_iso)
 
     in_window.sort(key=lambda x:x["score"],reverse=True)
-    print(f"  With address: {with_addr}")
+    print(f"  With prop address: {with_addr}")
 
-    # ── Save ───────────────────────────────────────────────────────────────
     payload={
         "fetched_at":   datetime.utcnow().isoformat()+"Z",
         "source":       "Bexar County Clerk / BCAD",
