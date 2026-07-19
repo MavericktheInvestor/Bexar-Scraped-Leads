@@ -1,8 +1,8 @@
 """
-Bexar County Motivated Seller Lead Scraper - Final Version
-===========================================================
-Uses Webshare residential proxies to bypass the portal's
-cloud-server block. Runs on GitHub Actions daily.
+Bexar County Motivated Seller Lead Scraper - Final + Google Sheets
+==================================================================
+Runs daily on GitHub Actions via residential proxy.
+Pushes new leads to Google Sheets automatically.
 """
 
 import asyncio, json, re, csv, time, io, zipfile, tempfile, os
@@ -20,17 +20,16 @@ except ImportError:
 
 CLERK_BASE    = "https://bexar.tx.publicsearch.us"
 LOOKBACK_DAYS = 7
+SHEET_ID      = "1mC-bTqyRB-VHlLdNCzCfkaPRAq0TsLYSc93JhjbiVJk"
+SHEET_NAME    = "Sheet1"
 
-# Proxy config — loaded from environment (GitHub Secrets)
 PROXY_USER = os.environ.get("PROXY_USER", "")
 PROXY_PASS = os.environ.get("PROXY_PASS", "")
-
-# Webshare US proxies — we try each until one works
 PROXY_LIST = [
-    ("31.56.127.193",  "7684"),   # US Seattle
-    ("198.23.243.226", "6361"),   # US Los Angeles
-    ("38.154.185.97",  "6370"),   # US Piscataway
-    ("191.96.254.138", "6185"),   # US Los Angeles
+    ("31.56.127.193",  "7684"),
+    ("198.23.243.226", "6361"),
+    ("38.154.185.97",  "6370"),
+    ("191.96.254.138", "6185"),
 ]
 
 DOC_TYPE_MAP = {
@@ -43,13 +42,22 @@ DOC_TYPE_MAP = {
 }
 TARGET_TYPES = set(DOC_TYPE_MAP.keys())
 
+SHEET_HEADERS = [
+    "First Name","Last Name",
+    "Mailing Address","Mailing City","Mailing State","Mailing Zip",
+    "Property Address","Property City","Property State","Property Zip",
+    "Lead Type","Document Type","Date Filed","Document Number",
+    "Amount/Debt Owed","Seller Score","Motivated Seller Flags",
+    "Source","Public Records URL",
+    "Status","Partner Notes","Date Contacted",
+]
+
 ROOT     = Path(__file__).resolve().parent.parent
 DASH_DIR = ROOT / "dashboard"
 DATA_DIR = ROOT / "data"
 DASH_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(exist_ok=True)
 
-# ── Dates ─────────────────────────────────────────────────────────────────────
 def date_range_mm():
     e = datetime.utcnow(); s = e - timedelta(days=LOOKBACK_DAYS)
     return s.strftime("%m/%d/%Y"), e.strftime("%m/%d/%Y")
@@ -85,71 +93,59 @@ def blank_rec(doc_type, cat_label=None):
         "flags":[],"score":0,
     }
 
-# ── Proxy helpers ─────────────────────────────────────────────────────────────
+def split_name(full):
+    if not full: return "",""
+    if "," in full:
+        p=[x.strip().title() for x in full.split(",",1)]; return p[1],p[0]
+    p=full.strip().title().split()
+    if len(p)==1: return "",p[0]
+    return p[0]," ".join(p[1:])
+
+# ── Proxy ──────────────────────────────────────────────────────────────────────
 def get_proxy_url(host, port):
     if PROXY_USER and PROXY_PASS:
         return f"http://{PROXY_USER}:{PROXY_PASS}@{host}:{port}"
     return f"http://{host}:{port}"
 
-def test_proxy(host, port):
-    """Test if a proxy can reach the Bexar portal."""
-    proxy_url = get_proxy_url(host, port)
-    proxies   = {"http": proxy_url, "https": proxy_url}
-    try:
-        r = requests.get(
-            CLERK_BASE, proxies=proxies,
-            timeout=15,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                     "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"},
-        )
-        if r.status_code == 200 and len(r.text) > 100:
-            print(f"  ✅ Proxy working: {host}:{port} ({len(r.text)} bytes)")
-            return True
-        else:
-            print(f"  ✗ Proxy {host}:{port} → HTTP {r.status_code}")
-            return False
-    except Exception as e:
-        print(f"  ✗ Proxy {host}:{port} → {e}")
-        return False
-
 def find_working_proxy():
-    """Try each proxy until one works."""
     print("🔌 Testing proxies …")
     for host, port in PROXY_LIST:
-        if test_proxy(host, port):
-            return host, port
-    print("⚠  No proxy worked — trying without proxy")
+        proxy_url = get_proxy_url(host, port)
+        proxies   = {"http":proxy_url,"https":proxy_url}
+        try:
+            r = requests.get(
+                CLERK_BASE, proxies=proxies, timeout=15,
+                headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                         "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"},
+            )
+            if r.status_code==200 and len(r.text)>100:
+                print(f"  ✅ {host}:{port}")
+                return host, port
+            else:
+                print(f"  ✗ {host}:{port} → {r.status_code}")
+        except Exception as e:
+            print(f"  ✗ {host}:{port} → {e}")
     return None, None
 
 # ── HTML parser ────────────────────────────────────────────────────────────────
 def parse_html(html, verbose=False):
     recs = []
-    if re.search(r"loading results|please wait|host not", html, re.I):
-        return []
-
+    if re.search(r"loading results|please wait|host not", html, re.I): return []
     soup = BeautifulSoup(html, "lxml")
-
     for tbl in soup.find_all("table"):
         rows = tbl.find_all("tr")
         if len(rows) < 2: continue
-
         hdr_cells = rows[0].find_all(["th","td"])
         hdrs      = [c.get_text(" ",strip=True) for c in hdr_cells]
         hdr_lower = " ".join(hdrs).lower()
-
-        if "grantor" not in hdr_lower and "doc" not in hdr_lower:
-            continue
-
-        if verbose:
-            print(f"\n  TABLE HEADERS: {hdrs}")
-
+        if "grantor" not in hdr_lower and "doc" not in hdr_lower: continue
+        if verbose: print(f"\n  HEADERS: {hdrs}")
         def fi(*frags):
             for f in frags:
                 for i,h in enumerate(hdrs):
                     if f.lower() in h.lower(): return i
             return -1
-
-        IX = {
+        IX={
             "num":  fi("doc number","instrument number","doc #","instrument #"),
             "type": fi("doc type","type"),
             "date": fi("recorded date","filed","recorded"),
@@ -159,46 +155,37 @@ def parse_html(html, verbose=False):
             "addr": fi("property address","situs"),
             "book": fi("book","volume"),
         }
-
-        if verbose:
-            print(f"  COLUMN MAP: {IX}")
-
-        for ri, tr in enumerate(rows[1:]):
+        if verbose: print(f"  MAP: {IX}")
+        for ri,tr in enumerate(rows[1:]):
             cells = tr.find_all(["td","th"])
-            if len(cells) < 4: continue
-
-            if verbose and ri == 0:
-                print(f"  FIRST ROW: {[c.get_text(' ',strip=True) for c in cells]}")
-
+            if len(cells)<4: continue
+            if verbose and ri==0:
+                print(f"  ROW0: {[c.get_text(' ',strip=True) for c in cells]}")
             def cv(*keys):
                 for k in keys:
-                    i = IX.get(k,-1)
+                    i=IX.get(k,-1)
                     if i>=0 and i<len(cells):
                         t=cells[i].get_text(" ",strip=True)
                         if t and not re.match(r"^[-/\s]+$",t): return t
                 return ""
-
             def any_link():
                 for c in cells:
                     for a in c.find_all("a"):
                         h=a.get("href","")
                         if h: return h if h.startswith("http") else CLERK_BASE+h
                 return CLERK_BASE
-
-            doc_num = re.sub(r"\s+","",cv("num","book"))
-            if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", doc_num): doc_num=""
+            doc_num=re.sub(r"\s+","",cv("num","book"))
+            if re.match(r"^\d{1,2}/\d{1,2}/\d{4}$",doc_num): doc_num=""
             if not doc_num:
                 for c in cells:
                     t=re.sub(r"\s+","",c.get_text(strip=True))
                     if re.match(r"^\d{6,}$",t) or re.match(r"^\d{4}-\d{4,}$",t):
                         doc_num=t; break
             if not doc_num: continue
-
-            raw_type  = re.sub(r"\s+","",cv("type")).upper()
-            doc_type  = raw_type if raw_type else "OTHER"
-            cat_label = DOC_TYPE_MAP.get(doc_type, doc_type)
-
-            rec = blank_rec(doc_type, cat_label)
+            raw_type=re.sub(r"\s+","",cv("type")).upper()
+            doc_type=raw_type if raw_type else "OTHER"
+            cat_label=DOC_TYPE_MAP.get(doc_type,doc_type)
+            rec=blank_rec(doc_type,cat_label)
             rec.update({
                 "doc_num":      doc_num,
                 "filed":        to_iso(cv("date")),
@@ -209,178 +196,126 @@ def parse_html(html, verbose=False):
                 "clerk_url":    any_link(),
             })
             recs.append(rec)
-
         if recs: break
     return recs
 
-# ── Playwright with proxy ──────────────────────────────────────────────────────
+# ── Playwright ─────────────────────────────────────────────────────────────────
 async def playwright_scrape(start_mm, end_mm, start_iso, proxy_host, proxy_port):
     from playwright.async_api import async_playwright
-    all_recs = []
-
-    # Build proxy config for Playwright
-    pw_proxy = None
+    all_recs=[]
+    pw_proxy=None
     if proxy_host and PROXY_USER:
-        pw_proxy = {
-            "server":   f"http://{proxy_host}:{proxy_port}",
-            "username": PROXY_USER,
-            "password": PROXY_PASS,
-        }
-        print(f"\n🌐 Using proxy: {proxy_host}:{proxy_port}")
-    else:
-        print("\n🌐 Running without proxy")
-
+        pw_proxy={"server":f"http://{proxy_host}:{proxy_port}",
+                  "username":PROXY_USER,"password":PROXY_PASS}
+        print(f"\n🌐 Proxy: {proxy_host}:{proxy_port}")
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=True,
-            proxy=pw_proxy,
+            headless=True, proxy=pw_proxy,
             args=["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"],
         )
         ctx = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            viewport={"width":1280,"height":900},
-            locale="en-US",
+            viewport={"width":1280,"height":900},locale="en-US",
         )
         page = await ctx.new_page()
-
-        # Capture JSON API responses
-        captured = []
+        captured=[]
         async def on_resp(resp):
             try:
-                ct = resp.headers.get("content-type","")
+                ct=resp.headers.get("content-type","")
                 if resp.status==200 and "json" in ct:
-                    body = await resp.json()
-                    items = _items(body)
-                    if items:
-                        captured.append(items)
-                        print(f"  📡 API captured: {len(items)} records")
+                    body=await resp.json()
+                    items=_items(body)
+                    if items: captured.append(items); print(f"  📡 API: {len(items)}")
             except Exception: pass
-        page.on("response", on_resp)
-
+        page.on("response",on_resp)
         try:
-            print("  → Loading Bexar County Clerk portal …")
-            resp = await page.goto(CLERK_BASE, timeout=60000)
-            await page.wait_for_load_state("networkidle", timeout=30000)
+            await page.goto(CLERK_BASE,timeout=60000)
+            await page.wait_for_load_state("networkidle",timeout=30000)
             await asyncio.sleep(3)
-
-            body_text = await page.content()
-            if "host not" in body_text.lower() or "403" in body_text[:50]:
-                print(f"  ✗ Portal blocked this proxy. Status: {resp.status if resp else 'unknown'}")
-                return []
-
-            print(f"  ✅ Portal loaded: {await page.title()}")
-
-            # Dismiss popup
+            body_text=await page.content()
+            if "host not" in body_text.lower():
+                print("  ✗ Portal blocked"); return []
+            print(f"  ✅ {await page.title()}")
             for txt in ["Close","Accept","I Agree","Continue","OK"]:
                 try:
-                    btn = page.get_by_role("button",name=re.compile(f"^{txt}$",re.I))
+                    btn=page.get_by_role("button",name=re.compile(f"^{txt}$",re.I))
                     if await btn.count()>0 and await btn.first.is_visible():
                         await btn.first.click(); await asyncio.sleep(1.5)
                         print(f"  ✅ Dismissed: {txt}"); break
                 except Exception: pass
-
-            # Set date range
-            date_inputs = await page.query_selector_all(".react-datepicker__input")
-            print(f"  Found {len(date_inputs)} date inputs")
-
-            if len(date_inputs) >= 2:
-                for di, val in [(0, start_mm),(1, end_mm)]:
+            date_inputs=await page.query_selector_all(".react-datepicker__input")
+            if len(date_inputs)>=2:
+                for di,val in [(0,start_mm),(1,end_mm)]:
                     await date_inputs[di].click()
                     await page.keyboard.press("Control+a")
                     await page.keyboard.press("Delete")
                     await date_inputs[di].fill(val)
                     await asyncio.sleep(0.5)
                     await page.keyboard.press("Escape")
-                print(f"  ✅ Date range set: {start_mm} → {end_mm}")
-
-            # Submit search
-            submitted = False
+                print(f"  ✅ Dates: {start_mm} → {end_mm}")
             for sel in ["button[type='submit']","button:has-text('Search')"]:
                 try:
-                    el = await page.query_selector(sel)
-                    if el and await el.is_visible():
-                        await el.click(); submitted=True; break
+                    el=await page.query_selector(sel)
+                    if el and await el.is_visible(): await el.click(); break
                 except Exception: pass
-            if submitted:
-                print("  ✅ Search submitted")
-
-            # Wait for results
             await asyncio.sleep(5)
-            for i in range(30):
-                html = await page.content()
-                if re.search(r"loading results|please wait", html, re.I):
+            for _ in range(30):
+                html=await page.content()
+                if re.search(r"loading results|please wait",html,re.I):
                     await asyncio.sleep(1); continue
-                soup  = BeautifulSoup(html,"lxml")
-                trows = [r for r in soup.find_all("tr") if len(r.find_all("td"))>=4]
-                if trows or captured:
-                    print(f"  ✅ Results ready: {len(trows)} rows")
-                    break
+                soup=BeautifulSoup(html,"lxml")
+                trows=[r for r in soup.find_all("tr") if len(r.find_all("td"))>=4]
+                if trows or captured: print(f"  ✅ {len(trows)} rows"); break
                 await asyncio.sleep(1)
-
-            # Parse API captures
             for items in captured:
                 for row in items:
                     if isinstance(row,dict):
                         rec=_api_row(row)
                         if rec: all_recs.append(rec)
-
-            # Parse HTML (verbose on first page)
-            html = await page.content()
-            html_recs = parse_html(html, verbose=True)
+            html=await page.content()
+            html_recs=parse_html(html,verbose=True)
             all_recs.extend(html_recs)
-            print(f"\n  Page 1: {len(html_recs)} HTML + "
-                  f"{len(all_recs)-len(html_recs)} API = {len(all_recs)} total")
-
-            # Paginate
-            page_num = 2
-            while page_num <= 200:
-                nxt = None
+            print(f"  Page 1: {len(html_recs)} HTML + {len(all_recs)-len(html_recs)} API")
+            page_num=2
+            while page_num<=200:
+                nxt=None
                 for ns in [
                     "button[aria-label*='next' i]:not([disabled])",
                     "a[aria-label*='next' i]",
                     "li.next:not(.disabled) a",
                     "button:has-text('›'):not([disabled])",
-                    "button:has-text('Next'):not([disabled])",
                 ]:
                     try:
-                        el = await page.query_selector(ns)
+                        el=await page.query_selector(ns)
                         if el and await el.is_visible():
-                            dis = await el.get_attribute("disabled")
-                            ard = await el.get_attribute("aria-disabled")
-                            cls = await el.get_attribute("class") or ""
+                            dis=await el.get_attribute("disabled")
+                            ard=await el.get_attribute("aria-disabled")
+                            cls=await el.get_attribute("class") or ""
                             if not dis and ard!="true" and "disabled" not in cls:
                                 nxt=el; break
                     except Exception: pass
-                if not nxt:
-                    print(f"  ✅ Done — {page_num-1} pages scraped")
-                    break
-
+                if not nxt: print(f"  ✅ Done — {page_num-1} pages"); break
                 captured.clear()
                 await nxt.click(); await asyncio.sleep(2)
                 for _ in range(15):
-                    h = await page.content()
+                    h=await page.content()
                     if not re.search(r"loading|please wait",h,re.I): break
                     await asyncio.sleep(1)
-
                 for items in captured:
                     for row in items:
                         if isinstance(row,dict):
                             rec=_api_row(row)
                             if rec: all_recs.append(rec)
-
-                more = parse_html(await page.content())
+                more=parse_html(await page.content())
                 all_recs.extend(more)
-                if page_num % 10 == 0:
-                    print(f"  Page {page_num}: {len(all_recs)} total")
-                page_num += 1
-
+                if page_num%10==0: print(f"  Page {page_num}: {len(all_recs)}")
+                page_num+=1
         except Exception as e:
-            print(f"\n  ✗ Error: {e}")
+            print(f"\n  ✗ {e}")
             import traceback; traceback.print_exc()
         finally:
             await browser.close()
-
     return all_recs
 
 def _items(body):
@@ -409,8 +344,7 @@ def _api_row(row):
                 v=row.get(k)
                 if not v: continue
                 if isinstance(v,list):
-                    parts=[safe(g.get("name") or g.get("fullName") or str(g))
-                           for g in v if g]
+                    parts=[safe(g.get("name") or g.get("fullName") or str(g)) for g in v if g]
                     if parts: return "; ".join(p for p in parts if p)
                 elif isinstance(v,str) and v.strip(): return v.strip()
             return ""
@@ -426,39 +360,32 @@ def _api_row(row):
         return rec
     except: return None
 
-# ── BCAD Parcel Lookup ─────────────────────────────────────────────────────────
+# ── BCAD ───────────────────────────────────────────────────────────────────────
 class ParcelLookup:
     def __init__(self):
         self.idx={}; self._load()
-
     def _load(self):
         import urllib3; urllib3.disable_warnings()
-        sess = requests.Session()
-        sess.headers["User-Agent"] = "Mozilla/5.0"
+        sess=requests.Session(); sess.headers["User-Agent"]="Mozilla/5.0"
         for ep in ["https://opendata.bcad.org/resource/tpvk-6xh3.json",
                    "https://opendata.bcad.org/resource/real-property.json"]:
             try:
                 offset=0; limit=50000; loaded=0
                 while True:
-                    r=sess.get(ep,params={"$limit":limit,"$offset":offset},
-                               timeout=60,verify=False)
+                    r=sess.get(ep,params={"$limit":limit,"$offset":offset},timeout=60,verify=False)
                     r.raise_for_status(); rows=r.json()
                     if not rows: break
                     for row in rows: self._add(row)
                     loaded+=len(rows)
                     if len(rows)<limit: break
                     offset+=limit; time.sleep(0.3)
-                if self.idx:
-                    print(f"  ✅ BCAD: {len(self.idx):,} entries ({loaded:,} parcels)")
-                    return
-            except Exception as e: print(f"  ✗ BCAD Socrata: {e}")
-
+                if self.idx: print(f"  ✅ BCAD: {len(self.idx):,} entries"); return
+            except Exception as e: print(f"  ✗ BCAD: {e}")
         if not HAS_DBF: print("  ⚠  No parcel data"); return
         for url in ["https://www.bcad.org/clientdb/PropertyExport.zip",
                     "https://www.bcad.org/Downloads/PropertyExport.zip"]:
             try:
-                time.sleep(3)
-                r=sess.get(url,timeout=120,stream=True); r.raise_for_status()
+                time.sleep(3); r=sess.get(url,timeout=120,stream=True); r.raise_for_status()
                 buf=io.BytesIO()
                 for chunk in r.iter_content(65536): buf.write(chunk)
                 zf=zipfile.ZipFile(io.BytesIO(buf.getvalue()))
@@ -467,11 +394,9 @@ class ParcelLookup:
                 if not dbfs: continue
                 with tempfile.TemporaryDirectory() as tmp:
                     zf.extractall(tmp); self._dbf(os.path.join(tmp,dbfs[0]))
-                if self.idx:
-                    print(f"  ✅ DBF: {len(self.idx):,} entries"); return
+                if self.idx: print(f"  ✅ DBF: {len(self.idx):,} entries"); return
             except Exception as e: print(f"  ✗ {e}"); time.sleep(5)
         print("  ⚠  BCAD unavailable")
-
     def _add(self,row):
         owner=(row.get("owner_name") or row.get("owner") or "").upper().strip()
         if not owner: return
@@ -485,7 +410,6 @@ class ParcelLookup:
             "mail_zip":    row.get("mail_zip",""),
         }
         for k in self._v(owner): self.idx.setdefault(k,p)
-
     def _dbf(self,path):
         try:
             for row in DBF(path,ignore_missing_memofile=True,encoding="latin-1"):
@@ -503,7 +427,6 @@ class ParcelLookup:
                 }
                 for k in self._v(owner): self.idx.setdefault(k,p)
         except Exception as e: print(f"  ✗ {e}")
-
     @staticmethod
     def _v(n):
         n=re.sub(r"\s+"," ",n).strip().upper(); v={n}
@@ -516,7 +439,6 @@ class ParcelLookup:
                 v.add(f"{pts[-1]},{' '.join(pts[:-1])}")
                 v.add(f"{pts[-1]} {' '.join(pts[:-1])}")
         return [x for x in v if x]
-
     def lookup(self,owner):
         if not owner: return {}
         for k in self._v(owner.upper()):
@@ -557,7 +479,7 @@ def export_csv(records,path):
     with open(path,"w",newline="",encoding="utf-8") as f:
         w=csv.DictWriter(f,fieldnames=fields); w.writeheader()
         for r in records:
-            fn,ln=_split(r.get("owner",""))
+            fn,ln=split_name(r.get("owner",""))
             w.writerow({
                 "First Name":fn,"Last Name":ln,
                 "Mailing Address":r.get("mail_address",""),
@@ -579,63 +501,138 @@ def export_csv(records,path):
                 "Public Records URL":r.get("clerk_url",""),
             })
 
-def _split(full):
-    if not full: return "",""
-    if "," in full:
-        p=[x.strip().title() for x in full.split(",",1)]; return p[1],p[0]
-    p=full.strip().title().split()
-    if len(p)==1: return "",p[0]
-    return p[0]," ".join(p[1:])
+# ── Google Sheets push ─────────────────────────────────────────────────────────
+def push_to_sheets(records):
+    print("\n📊 Pushing to Google Sheets …")
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS","")
+    if not creds_json:
+        print("  ⚠  GOOGLE_CREDENTIALS not set — skipping")
+        return
+    try:
+        import google.oauth2.service_account as sa
+        import googleapiclient.discovery as discovery
+        creds = sa.Credentials.from_service_account_info(
+            json.loads(creds_json),
+            scopes=["https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"],
+        )
+        svc   = discovery.build("sheets","v4",credentials=creds,cache_discovery=False)
+        sheet = svc.spreadsheets()
+
+        # Read existing doc numbers to avoid duplicates
+        result = sheet.values().get(
+            spreadsheetId=SHEET_ID,
+            range=f"{SHEET_NAME}!A:V",
+        ).execute()
+        existing = result.get("values",[])
+
+        # Column N (index 13) = Document Number
+        existing_nums = set()
+        for row in existing[1:]:
+            if len(row)>13 and row[13]:
+                existing_nums.add(str(row[13]).strip())
+
+        print(f"  Existing rows: {len(existing)-1 if existing else 0}")
+
+        # Find truly new records
+        new_recs = [r for r in records
+                    if str(r.get("doc_num","")).strip() not in existing_nums]
+        print(f"  New records to add: {len(new_recs)}")
+
+        if not new_recs:
+            print("  ✅ Sheet already up to date")
+            return
+
+        # Build rows
+        def make_row(r):
+            fn,ln=split_name(r.get("owner",""))
+            return [
+                fn,ln,
+                r.get("mail_address",""),r.get("mail_city",""),
+                r.get("mail_state","TX"),r.get("mail_zip",""),
+                r.get("prop_address",""),r.get("prop_city","San Antonio"),
+                r.get("prop_state","TX"),r.get("prop_zip",""),
+                r.get("cat_label",""),r.get("doc_type",""),
+                r.get("filed",""),r.get("doc_num",""),
+                str(r.get("amount","")),str(r.get("score",0)),
+                " | ".join(r.get("flags",[])),
+                "Bexar County Clerk",r.get("clerk_url",""),
+                "","","",  # Status, Partner Notes, Date Contacted
+            ]
+
+        new_rows = [make_row(r) for r in new_recs]
+
+        if not existing:
+            # Write headers + data
+            sheet.values().update(
+                spreadsheetId=SHEET_ID,
+                range=f"{SHEET_NAME}!A1",
+                valueInputOption="RAW",
+                body={"values":[SHEET_HEADERS]+new_rows},
+            ).execute()
+            print(f"  ✅ Created sheet with {len(new_rows)} leads")
+        else:
+            # Insert rows at top (after header row = index 1)
+            sheet.batchUpdate(
+                spreadsheetId=SHEET_ID,
+                body={"requests":[{"insertDimension":{
+                    "range":{
+                        "sheetId":0,"dimension":"ROWS",
+                        "startIndex":1,"endIndex":1+len(new_rows),
+                    },
+                    "inheritFromBefore":False,
+                }}]},
+            ).execute()
+            sheet.values().update(
+                spreadsheetId=SHEET_ID,
+                range=f"{SHEET_NAME}!A2",
+                valueInputOption="RAW",
+                body={"values":new_rows},
+            ).execute()
+            print(f"  ✅ {len(new_rows)} new leads added to top of sheet")
+
+        print(f"  🔗 https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit")
+
+    except Exception as e:
+        print(f"  ✗ Sheets error: {e}")
+        import traceback; traceback.print_exc()
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 async def main():
     print("="*60)
-    print("  Bexar County Motivated Seller Scraper — Final")
+    print("  Bexar County Motivated Seller Scraper")
     print(f"  {datetime.utcnow().isoformat()} UTC")
     print("="*60)
 
-    s_mm,  e_mm  = date_range_mm()
-    s_iso, e_iso = date_range_iso()
-    print(f"\n📅 Date window: {s_iso} → {e_iso}")
-    print(f"   Proxy user:  {'SET' if PROXY_USER else 'NOT SET'}\n")
+    s_mm,e_mm   = date_range_mm()
+    s_iso,e_iso = date_range_iso()
+    print(f"\n📅 Window: {s_iso} → {e_iso}")
+    print(f"   Proxy: {'configured' if PROXY_USER else 'not set'}\n")
 
-    # Find working proxy
-    proxy_host, proxy_port = find_working_proxy()
+    proxy_host,proxy_port = find_working_proxy()
 
-    # Load BCAD
     print("\n📦 Loading BCAD parcel data …")
     parcel = ParcelLookup()
 
-    # Scrape — try each proxy until we get records
-    all_recs = []
-    proxies_to_try = [(proxy_host, proxy_port)] if proxy_host else [(None, None)]
-
-    # If first proxy failed, try remaining US proxies
-    if not proxy_host:
-        proxies_to_try = [(None, None)]
+    all_recs=[]
+    proxies_to_try=[]
+    if proxy_host:
+        proxies_to_try.append((proxy_host,proxy_port))
+        proxies_to_try+= [(h,p) for h,p in PROXY_LIST if (h,p)!=(proxy_host,proxy_port)]
     else:
-        used = (proxy_host, proxy_port)
-        remaining = [(h,p) for h,p in PROXY_LIST if (h,p) != used]
-        proxies_to_try = [(proxy_host, proxy_port)] + remaining
+        proxies_to_try=[(None,None)]
 
-    for ph, pp in proxies_to_try:
-        print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct connection'} …")
-        recs = await playwright_scrape(s_mm, e_mm, s_iso, ph, pp)
-        if recs:
-            all_recs = recs
-            print(f"  ✅ Got {len(recs)} records")
-            break
-        else:
-            print(f"  ✗ No records from this proxy, trying next …")
-
-    print(f"\n  Raw total: {len(all_recs)}")
+    for ph,pp in proxies_to_try:
+        print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct'} …")
+        recs = await playwright_scrape(s_mm,e_mm,s_iso,ph,pp)
+        if recs: all_recs=recs; print(f"  ✅ {len(recs)} records"); break
+        else: print("  ✗ No records — trying next proxy …")
 
     # Dedup
     seen=set(); unique=[]
     for r in all_recs:
         k=f"{r['doc_num']}|{r.get('doc_type','')}"
         if k not in seen: seen.add(k); unique.append(r)
-    print(f"  After dedup: {len(unique)}")
 
     # Date filter
     in_window=[]; dropped=0
@@ -643,7 +640,7 @@ async def main():
         fd=r.get("filed","")
         if not fd or fd>=s_iso: in_window.append(r)
         else: dropped+=1
-    print(f"  In window: {len(in_window)}  |  Old dropped: {dropped}")
+    print(f"\n  Unique: {len(unique)} | In window: {len(in_window)} | Dropped: {dropped}")
 
     # Enrich
     with_addr=0
@@ -657,17 +654,9 @@ async def main():
         r["flags"],r["score"]=score_record(r,s_iso)
 
     in_window.sort(key=lambda x:x["score"],reverse=True)
+    print(f"  With address: {with_addr}")
 
-    # Doc type breakdown
-    from collections import Counter
-    type_counts=Counter(r["doc_type"] for r in in_window if r["doc_type"] in TARGET_TYPES)
-    if type_counts:
-        print("\n  Motivated seller breakdown:")
-        for dt,cnt in sorted(type_counts.items(),key=lambda x:-x[1]):
-            print(f"    {dt:12} {DOC_TYPE_MAP.get(dt,dt):25} {cnt}")
-
-    print(f"\n  With address: {with_addr}")
-
+    # Save JSON
     payload={
         "fetched_at":   datetime.utcnow().isoformat()+"Z",
         "source":       "Bexar County Clerk / BCAD",
@@ -680,8 +669,13 @@ async def main():
         dest.write_text(json.dumps(payload,indent=2,default=str))
         print(f"💾 {dest}")
 
+    # Save CSV
     export_csv(in_window,DATA_DIR/"leads.csv")
     print(f"📊 {DATA_DIR/'leads.csv'}")
+
+    # Push to Google Sheets
+    push_to_sheets(in_window)
+
     print(f"\n🎉 Done — {len(in_window)} leads | {with_addr} with address.\n")
 
 if __name__=="__main__":
