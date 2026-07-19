@@ -2,7 +2,7 @@ name: Scrape Bexar County Leads
 
 on:
   schedule:
-    - cron: "0 12 * * *"   # 7 AM Central daily
+    - cron: "0 12 * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,14 +32,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 lxml dbfread playwright urllib3
+          pip install requests beautifulsoup4 lxml dbfread playwright urllib3 \
+                      google-auth google-auth-httplib2 google-api-python-client
 
       - name: Install Playwright Chromium
         run: python -m playwright install --with-deps chromium
 
       - name: Create output directories
-        run: |
-          mkdir -p dashboard data
+        run: mkdir -p dashboard data
 
       - name: Run scraper
         run: python scraper/fetch.py
@@ -47,12 +47,13 @@ jobs:
           PYTHONUNBUFFERED: "1"
           PROXY_USER: ${{ secrets.PROXY_USER }}
           PROXY_PASS: ${{ secrets.PROXY_PASS }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
       - name: Commit and push results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dashboard/records.json data/records.json data/leads.csv
+          git add dashboard/records.json data/records.json data/leads.csv || true
           git diff --cached --quiet || git commit -m "leads: $(date -u +%Y-%m-%d)"
           git push origin main || (git pull --rebase origin main && git push origin main)
 
