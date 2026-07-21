@@ -1,10 +1,9 @@
 """
-Bexar County Motivated Seller Lead Scraper - Final + Scoring Fix
-=================================================================
-Changes:
-- Only keeps motivated seller doc types (filters out DEED, RELEASE, etc.)
-- Fixed scoring so LP, JUD, NOFC etc. score correctly (70+)
-- Non-target types still saved to CSV but excluded from dashboard
+Bexar County Motivated Seller Lead Scraper - Fixed Type Matching
+================================================================
+Fix: Portal returns full-word doc types (LISPENDENS, STATETAXLIEN,
+MECHANICSLIEN) not short codes (LP, LNCORPTX, LNMECH).
+Solution: Map both forms to standard codes before filtering.
 """
 
 import asyncio, json, re, csv, time, io, zipfile, tempfile, os
@@ -34,7 +33,7 @@ PROXY_LIST = [
     ("191.96.254.138", "6185"),
 ]
 
-# ── Motivated seller doc types ONLY ───────────────────────────────────────────
+# ── Standard doc type map ──────────────────────────────────────────────────────
 DOC_TYPE_MAP = {
     "LP":       "Lis Pendens",
     "NOFC":     "Notice of Foreclosure",
@@ -53,17 +52,74 @@ DOC_TYPE_MAP = {
     "NOC":      "Notice of Commencement",
     "RELLP":    "Release Lis Pendens",
 }
-TARGET_TYPES = set(DOC_TYPE_MAP.keys())
 
-# Doc types to EXCLUDE — not motivated seller signals
-EXCLUDE_TYPES = {
-    "DEED","WD","WARRANTY","RELEASE","RELEASEOFHL","SATISFACTION",
-    "TRANSFER","ASSIGNMENT","AFFIDAVIT","CORRECTION","MODIFICATION",
-    "NOTICE","AGREEMENT","DESIGNATION","APPOINTMENT","POWEROFATTORNEY",
-    "PARTIALRELEASE","UCC3REALPROPERTY","UCC1REALPROPERTY","HOSPITALLIEN",
-    "RELEASEOFSTATETAXLIEN","MISCELLANEOUS","SUBORDINATION","EASEMENT",
-    "PLAT","SURVEY","DECLARATION","COVENANT","RESTRICTION",
+# ── Portal full-word → standard code mapping ───────────────────────────────────
+# The portal uses full words; we map them to our standard codes
+TYPE_ALIAS = {
+    # Lis Pendens variants
+    "LISPENDENS":           "LP",
+    "LIS PENDENS":          "LP",
+    "LP":                   "LP",
+    "RELLISPENDENS":        "RELLP",
+    "RELEASELISPENDENS":    "RELLP",
+    "RELLP":                "RELLP",
+
+    # Foreclosure
+    "NOTICEOFFORECLOSURE":  "NOFC",
+    "NOFC":                 "NOFC",
+    "TAXDEED":              "TAXDEED",
+    "TAX DEED":             "TAXDEED",
+
+    # Judgments
+    "JUDGMENT":             "JUD",
+    "JUD":                  "JUD",
+    "CCJ":                  "CCJ",
+    "CERTIFIEDJUDGMENT":    "CCJ",
+    "DRJUD":                "DRJUD",
+    "DOMESTICJUDGMENT":     "DRJUD",
+
+    # Tax/Federal Liens
+    "STATETAXLIEN":         "LNCORPTX",
+    "STATE TAX LIEN":       "LNCORPTX",
+    "CORPTAXLIEN":          "LNCORPTX",
+    "LNCORPTX":             "LNCORPTX",
+    "IRSLIEN":              "LNIRS",
+    "IRS LIEN":             "LNIRS",
+    "LNIRS":                "LNIRS",
+    "FEDERALLIEN":          "LNFED",
+    "FEDERAL LIEN":         "LNFED",
+    "LNFED":                "LNFED",
+    "RELEASEOFSTATETAXLIEN":"LNCORPTX",  # release — still useful signal
+
+    # Mechanic / HOA Liens
+    "MECHANICLIEN":         "LNMECH",
+    "MECHANIC LIEN":        "LNMECH",
+    "MECHANICSLIEN":        "LNMECH",
+    "LNMECH":               "LNMECH",
+    "HOALIEN":              "LNHOA",
+    "HOA LIEN":             "LNHOA",
+    "LNHOA":                "LNHOA",
+    "HOSPITALLIEN":         "LNHOA",   # hospital = medical lien
+
+    # Medicaid
+    "MEDICAIDLIEN":         "MEDLN",
+    "MEDLN":                "MEDLN",
+
+    # Probate
+    "PROBATE":              "PRO",
+    "PRO":                  "PRO",
+
+    # General lien
+    "LIEN":                 "LN",
+    "LN":                   "LN",
+
+    # Notice of commencement
+    "NOTICEOFCOMMENCEMENT": "NOC",
+    "NOC":                  "NOC",
+    "NOTICE":               "NOC",
 }
+
+TARGET_TYPES = set(DOC_TYPE_MAP.keys())
 
 SHEET_HEADERS = [
     "First Name","Last Name",
@@ -104,6 +160,28 @@ def parse_amt(raw):
     try: return float(c)
     except: return 0.0
 
+def normalise_type(raw):
+    """
+    Convert any portal doc type string to our standard code.
+    Returns (standard_code, cat_label, is_motivated_seller)
+    """
+    if not raw: return "OTHER", "Other", False
+    # Strip spaces, uppercase
+    key = re.sub(r"\s+","",raw.strip().upper())
+    # Direct alias lookup
+    code = TYPE_ALIAS.get(key)
+    if not code:
+        # Try partial match — portal sometimes adds suffixes
+        for alias_key, alias_code in TYPE_ALIAS.items():
+            if key.startswith(alias_key) or alias_key.startswith(key):
+                code = alias_code
+                break
+    if not code:
+        code = key  # keep as-is
+    label = DOC_TYPE_MAP.get(code, raw.title())
+    is_motivated = code in TARGET_TYPES
+    return code, label, is_motivated
+
 def blank_rec(doc_type, cat_label=None):
     return {
         "doc_num":"","doc_type":doc_type,
@@ -124,117 +202,80 @@ def split_name(full):
     if len(p)==1: return "",p[0]
     return p[0]," ".join(p[1:])
 
-# ── Scoring — fixed to give proper scores ─────────────────────────────────────
+# ── Scoring ────────────────────────────────────────────────────────────────────
 def score_record(r, cutoff):
-    """
-    Scoring rubric:
-    Base: 30
-    +20  LP or NOFC (pre-foreclosure signal)
-    +15  Judgment (JUD/CCJ/DRJUD)
-    +15  Tax/IRS/Federal lien
-    +10  Mechanic/HOA lien
-    +10  Probate
-    +20  LP + Foreclosure combo (double distress)
-    +15  Amount > $100k
-    +10  Amount > $50k
-    +5   Filed this week
-    +5   Has property address
-    +10  LLC/Corp owner (motivated to sell)
-    Max: 100
-    """
-    flags = []
-    sc    = 30
-    dt    = r.get("doc_type","")
-    amt   = r.get("amount", 0.0)
-    own   = (r.get("owner") or "").upper()
-    filed = r.get("filed","")
+    flags=[]; sc=30
+    dt  = r.get("doc_type","")
+    amt = r.get("amount",0.0)
+    own = (r.get("owner") or "").upper()
+    fd  = r.get("filed","")
 
-    # ── Flag and score by doc type ─────────────────────────────────────────
-    if dt == "LP":
-        flags.append("Lis pendens"); sc += 20
-    if dt == "RELLP":
-        flags.append("Lis pendens"); sc += 5   # release = less urgent
+    if dt=="LP":
+        flags.append("Lis pendens"); sc+=20
+    if dt=="RELLP":
+        flags.append("Lis pendens"); sc+=5
     if dt in ("NOFC","TAXDEED"):
-        flags.append("Pre-foreclosure"); sc += 20
+        flags.append("Pre-foreclosure"); sc+=20
     if dt in ("JUD","CCJ","DRJUD"):
-        flags.append("Judgment lien"); sc += 15
+        flags.append("Judgment lien"); sc+=15
     if dt in ("LNCORPTX","LNIRS","LNFED"):
-        flags.append("Tax lien"); sc += 15
-    if dt == "LNMECH":
-        flags.append("Mechanic lien"); sc += 10
-    if dt == "LNHOA":
-        flags.append("HOA lien"); sc += 10
-    if dt == "MEDLN":
-        flags.append("Medicaid lien"); sc += 10
-    if dt == "PRO":
-        flags.append("Probate / estate"); sc += 10
-    if dt == "NOC":
-        flags.append("Notice of commencement"); sc += 5
-    if dt == "LN":
-        flags.append("General lien"); sc += 8
-
-    # ── Combo bonus ────────────────────────────────────────────────────────
+        flags.append("Tax lien"); sc+=15
+    if dt=="LNMECH":
+        flags.append("Mechanic lien"); sc+=10
+    if dt=="LNHOA":
+        flags.append("HOA lien"); sc+=10
+    if dt=="MEDLN":
+        flags.append("Medicaid lien"); sc+=10
+    if dt=="PRO":
+        flags.append("Probate / estate"); sc+=10
+    if dt=="NOC":
+        flags.append("Notice of commencement"); sc+=5
+    if dt=="LN":
+        flags.append("General lien"); sc+=8
     if "Lis pendens" in flags and "Pre-foreclosure" in flags:
-        sc += 20   # double distress = hot lead
-
-    # ── LLC/Corp owner ─────────────────────────────────────────────────────
-    if any(k in own for k in ("LLC","INC","CORP","LTD","TRUST","LP ")):
-        flags.append("LLC / corp owner"); sc += 10
-
-    # ── Amount bonuses ─────────────────────────────────────────────────────
-    if amt > 100_000:
-        sc += 15
-    elif amt > 50_000:
-        sc += 10
-    elif amt > 10_000:
-        sc += 5
-
-    # ── Recency bonus ──────────────────────────────────────────────────────
-    if filed and filed >= cutoff:
-        flags.append("New this week"); sc += 5
-
-    # ── Address bonus ──────────────────────────────────────────────────────
-    if r.get("prop_address") and r["prop_address"] != "N/A":
-        sc += 5
-
-    return flags, min(sc, 100)
+        sc+=20
+    if any(k in own for k in ("LLC","INC","CORP","LTD","TRUST")):
+        flags.append("LLC / corp owner"); sc+=10
+    if amt>100_000: sc+=15
+    elif amt>50_000: sc+=10
+    elif amt>10_000: sc+=5
+    if fd and fd>=cutoff:
+        flags.append("New this week"); sc+=5
+    if r.get("prop_address") and r["prop_address"] not in ("N/A",""):
+        sc+=5
+    return flags, min(sc,100)
 
 # ── Proxy ──────────────────────────────────────────────────────────────────────
-def get_proxy_url(host, port):
+def get_proxy_url(host,port):
     if PROXY_USER and PROXY_PASS:
         return f"http://{PROXY_USER}:{PROXY_PASS}@{host}:{port}"
     return f"http://{host}:{port}"
 
 def find_working_proxy():
     print("🔌 Testing proxies …")
-    for host, port in PROXY_LIST:
-        proxy_url = get_proxy_url(host, port)
-        proxies   = {"http":proxy_url,"https":proxy_url}
+    for host,port in PROXY_LIST:
+        proxies={"http":get_proxy_url(host,port),"https":get_proxy_url(host,port)}
         try:
-            r = requests.get(
-                CLERK_BASE, proxies=proxies, timeout=15,
+            r=requests.get(CLERK_BASE,proxies=proxies,timeout=15,
                 headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                         "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"},
-            )
+                         "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
             if r.status_code==200 and len(r.text)>100:
-                print(f"  ✅ {host}:{port}"); return host, port
-            else:
-                print(f"  ✗ {host}:{port} → {r.status_code}")
-        except Exception as e:
-            print(f"  ✗ {host}:{port} → {e}")
-    return None, None
+                print(f"  ✅ {host}:{port}"); return host,port
+            else: print(f"  ✗ {host}:{port} → {r.status_code}")
+        except Exception as e: print(f"  ✗ {host}:{port} → {e}")
+    return None,None
 
 # ── HTML parser ────────────────────────────────────────────────────────────────
 def parse_html(html, verbose=False):
-    recs = []
-    if re.search(r"loading results|please wait|host not", html, re.I): return []
-    soup = BeautifulSoup(html, "lxml")
+    recs=[]
+    if re.search(r"loading results|please wait|host not",html,re.I): return []
+    soup=BeautifulSoup(html,"lxml")
     for tbl in soup.find_all("table"):
-        rows = tbl.find_all("tr")
-        if len(rows) < 2: continue
-        hdr_cells = rows[0].find_all(["th","td"])
-        hdrs      = [c.get_text(" ",strip=True) for c in hdr_cells]
-        hdr_lower = " ".join(hdrs).lower()
+        rows=tbl.find_all("tr")
+        if len(rows)<2: continue
+        hdr_cells=rows[0].find_all(["th","td"])
+        hdrs=[c.get_text(" ",strip=True) for c in hdr_cells]
+        hdr_lower=" ".join(hdrs).lower()
         if "grantor" not in hdr_lower and "doc" not in hdr_lower: continue
         if verbose: print(f"\n  HEADERS: {hdrs}")
         def fi(*frags):
@@ -242,22 +283,18 @@ def parse_html(html, verbose=False):
                 for i,h in enumerate(hdrs):
                     if f.lower() in h.lower(): return i
             return -1
-        IX = {
-            "num":  fi("doc number","instrument number","doc #","instrument #"),
-            "type": fi("doc type","type"),
-            "date": fi("recorded date","filed","recorded"),
-            "own":  fi("grantor","owner","seller"),
-            "gnt":  fi("grantee","lender","trustee"),
-            "leg":  fi("legal description","legal"),
-            "addr": fi("property address","situs"),
-            "book": fi("book","volume"),
-        }
+        IX={"num":fi("doc number","instrument number","doc #","instrument #"),
+            "type":fi("doc type","type"),"date":fi("recorded date","filed","recorded"),
+            "own":fi("grantor","owner","seller"),"gnt":fi("grantee","lender","trustee"),
+            "leg":fi("legal description","legal"),"addr":fi("property address","situs"),
+            "book":fi("book","volume")}
         if verbose: print(f"  MAP: {IX}")
         for ri,tr in enumerate(rows[1:]):
-            cells = tr.find_all(["td","th"])
+            cells=tr.find_all(["td","th"])
             if len(cells)<4: continue
             if verbose and ri==0:
-                print(f"  ROW0: {[c.get_text(' ',strip=True) for c in cells]}")
+                raw=[c.get_text(" ",strip=True) for c in cells]
+                print(f"  ROW0: {raw}")
             def cv(*keys):
                 for k in keys:
                     i=IX.get(k,-1)
@@ -279,25 +316,26 @@ def parse_html(html, verbose=False):
                     if re.match(r"^\d{6,}$",t) or re.match(r"^\d{4}-\d{4,}$",t):
                         doc_num=t; break
             if not doc_num: continue
-            raw_type = re.sub(r"\s+","",cv("type")).upper()
-            doc_type = raw_type if raw_type else "OTHER"
-            cat_label= DOC_TYPE_MAP.get(doc_type, doc_type)
-            rec = blank_rec(doc_type, cat_label)
+            raw_type=cv("type")
+            code,label,is_motivated=normalise_type(raw_type)
+            rec=blank_rec(code,label)
             rec.update({
                 "doc_num":      doc_num,
+                "raw_type":     raw_type,  # keep original for debug
                 "filed":        to_iso(cv("date")),
                 "owner":        cv("own"),
                 "grantee":      cv("gnt"),
                 "legal":        cv("leg"),
                 "prop_address": cv("addr"),
                 "clerk_url":    any_link(),
+                "is_motivated": is_motivated,
             })
             recs.append(rec)
         if recs: break
     return recs
 
 # ── Playwright ─────────────────────────────────────────────────────────────────
-async def playwright_scrape(start_mm, end_mm, start_iso, proxy_host, proxy_port):
+async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
     from playwright.async_api import async_playwright
     all_recs=[]
     pw_proxy=None
@@ -306,16 +344,14 @@ async def playwright_scrape(start_mm, end_mm, start_iso, proxy_host, proxy_port)
                   "username":PROXY_USER,"password":PROXY_PASS}
         print(f"\n🌐 Proxy: {proxy_host}:{proxy_port}")
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True, proxy=pw_proxy,
-            args=["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"],
-        )
-        ctx = await browser.new_context(
+        browser=await p.chromium.launch(
+            headless=True,proxy=pw_proxy,
+            args=["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"])
+        ctx=await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            viewport={"width":1280,"height":900}, locale="en-US",
-        )
-        page = await ctx.new_page()
+            viewport={"width":1280,"height":900},locale="en-US")
+        page=await ctx.new_page()
         captured=[]
         async def on_resp(resp):
             try:
@@ -363,7 +399,7 @@ async def playwright_scrape(start_mm, end_mm, start_iso, proxy_host, proxy_port)
                     await asyncio.sleep(1); continue
                 soup=BeautifulSoup(html,"lxml")
                 trows=[r for r in soup.find_all("tr") if len(r.find_all("td"))>=4]
-                if trows or captured: print(f"  ✅ {len(trows)} rows"); break
+                if trows or captured: print(f"  ✅ {len(trows)} rows ready"); break
                 await asyncio.sleep(1)
             for items in captured:
                 for row in items:
@@ -374,6 +410,13 @@ async def playwright_scrape(start_mm, end_mm, start_iso, proxy_host, proxy_port)
             html_recs=parse_html(html,verbose=True)
             all_recs.extend(html_recs)
             print(f"  Page 1: {len(html_recs)} HTML + {len(all_recs)-len(html_recs)} API")
+
+            # Print sample of doc types found for debug
+            if html_recs:
+                from collections import Counter
+                raw_types=Counter(r.get("raw_type","?") for r in html_recs[:50])
+                print(f"  Sample types: {dict(raw_types.most_common(10))}")
+
             page_num=2
             while page_num<=200:
                 nxt=None
@@ -431,10 +474,8 @@ def _api_row(row):
         doc_num=safe(row.get("instrumentNumber") or row.get("docNumber") or
                      row.get("id") or row.get("documentNumber") or "")
         if not doc_num: return None
-        doc_type=safe(row.get("docType") or row.get("documentType") or "OTHER").upper()
-        if doc_type not in TARGET_TYPES:
-            doc_type=next((t for t in sorted(TARGET_TYPES,key=len,reverse=True)
-                          if doc_type.startswith(t)),doc_type)
+        raw_type=safe(row.get("docType") or row.get("documentType") or "")
+        code,label,is_motivated=normalise_type(raw_type)
         filed=to_iso(row.get("filedDate") or row.get("recordedDate") or "")
         def names(keys):
             for k in keys:
@@ -445,22 +486,24 @@ def _api_row(row):
                     if parts: return "; ".join(p for p in parts if p)
                 elif isinstance(v,str) and v.strip(): return v.strip()
             return ""
-        rec=blank_rec(doc_type)
+        rec=blank_rec(code,label)
         rec.update({
-            "doc_num":  doc_num,"filed":filed,
-            "owner":    names(["grantors","grantor","seller","debtor"]),
-            "grantee":  names(["grantees","grantee","lender","trustee"]),
-            "amount":   parse_amt(row.get("consideration") or row.get("amount") or 0),
-            "legal":    safe(row.get("legalDescription") or row.get("legal") or ""),
-            "clerk_url":f"{CLERK_BASE}/doc/{doc_num}",
+            "doc_num":      doc_num,
+            "raw_type":     raw_type,
+            "filed":        filed,
+            "owner":        names(["grantors","grantor","seller","debtor"]),
+            "grantee":      names(["grantees","grantee","lender","trustee"]),
+            "amount":       parse_amt(row.get("consideration") or row.get("amount") or 0),
+            "legal":        safe(row.get("legalDescription") or row.get("legal") or ""),
+            "clerk_url":    f"{CLERK_BASE}/doc/{doc_num}",
+            "is_motivated": is_motivated,
         })
         return rec
     except: return None
 
 # ── BCAD ───────────────────────────────────────────────────────────────────────
 class ParcelLookup:
-    def __init__(self):
-        self.idx={}; self._load()
+    def __init__(self): self.idx={}; self._load()
     def _load(self):
         import urllib3; urllib3.disable_warnings()
         sess=requests.Session(); sess.headers["User-Agent"]="Mozilla/5.0"
@@ -497,15 +540,13 @@ class ParcelLookup:
     def _add(self,row):
         owner=(row.get("owner_name") or row.get("owner") or "").upper().strip()
         if not owner: return
-        p={
-            "prop_address":row.get("situs_address") or row.get("site_address",""),
-            "prop_city":   row.get("situs_city","San Antonio"),
-            "prop_zip":    row.get("situs_zip",""),
-            "mail_address":row.get("mail_address",""),
-            "mail_city":   row.get("mail_city",""),
-            "mail_state":  row.get("mail_state","TX"),
-            "mail_zip":    row.get("mail_zip",""),
-        }
+        p={"prop_address":row.get("situs_address") or row.get("site_address",""),
+           "prop_city":row.get("situs_city","San Antonio"),
+           "prop_zip":row.get("situs_zip",""),
+           "mail_address":row.get("mail_address",""),
+           "mail_city":row.get("mail_city",""),
+           "mail_state":row.get("mail_state","TX"),
+           "mail_zip":row.get("mail_zip","")}
         for k in self._v(owner): self.idx.setdefault(k,p)
     def _dbf(self,path):
         try:
@@ -513,15 +554,13 @@ class ParcelLookup:
                 r={k.upper():safe(v) for k,v in row.items()}
                 owner=(r.get("OWNER") or r.get("OWN1") or "").upper().strip()
                 if not owner: continue
-                p={
-                    "prop_address":r.get("SITE_ADDR") or r.get("SITEADDR",""),
-                    "prop_city":   r.get("SITE_CITY","San Antonio"),
-                    "prop_zip":    r.get("SITE_ZIP") or r.get("SITEZIP",""),
-                    "mail_address":r.get("ADDR_1") or r.get("MAILADR1",""),
-                    "mail_city":   r.get("CITY") or r.get("MAILCITY",""),
-                    "mail_state":  r.get("STATE","TX"),
-                    "mail_zip":    r.get("ZIP") or r.get("MAILZIP",""),
-                }
+                p={"prop_address":r.get("SITE_ADDR") or r.get("SITEADDR",""),
+                   "prop_city":r.get("SITE_CITY","San Antonio"),
+                   "prop_zip":r.get("SITE_ZIP") or r.get("SITEZIP",""),
+                   "mail_address":r.get("ADDR_1") or r.get("MAILADR1",""),
+                   "mail_city":r.get("CITY") or r.get("MAILCITY",""),
+                   "mail_state":r.get("STATE","TX"),
+                   "mail_zip":r.get("ZIP") or r.get("MAILZIP","")}
                 for k in self._v(owner): self.idx.setdefault(k,p)
         except Exception as e: print(f"  ✗ {e}")
     @staticmethod
@@ -544,7 +583,7 @@ class ParcelLookup:
         return {}
 
 # ── CSV ────────────────────────────────────────────────────────────────────────
-def export_csv(records, path):
+def export_csv(records,path):
     fields=["First Name","Last Name",
             "Mailing Address","Mailing City","Mailing State","Mailing Zip",
             "Property Address","Property City","Property State","Property Zip",
@@ -579,33 +618,28 @@ def export_csv(records, path):
 # ── Google Sheets ──────────────────────────────────────────────────────────────
 def push_to_sheets(records):
     print("\n📊 Pushing to Google Sheets …")
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS","")
-    if not creds_json:
-        print("  ⚠  GOOGLE_CREDENTIALS not set"); return
+    creds_json=os.environ.get("GOOGLE_CREDENTIALS","")
+    if not creds_json: print("  ⚠  GOOGLE_CREDENTIALS not set"); return
     try:
         import google.oauth2.service_account as sa
         import googleapiclient.discovery as discovery
-        creds = sa.Credentials.from_service_account_info(
+        creds=sa.Credentials.from_service_account_info(
             json.loads(creds_json),
             scopes=["https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive"],
-        )
-        svc   = discovery.build("sheets","v4",credentials=creds,cache_discovery=False)
-        sheet = svc.spreadsheets()
-        result= sheet.values().get(
-            spreadsheetId=SHEET_ID, range=f"{SHEET_NAME}!A:V",
-        ).execute()
-        existing = result.get("values",[])
-        existing_nums = set()
+                    "https://www.googleapis.com/auth/drive"])
+        svc=discovery.build("sheets","v4",credentials=creds,cache_discovery=False)
+        sheet=svc.spreadsheets()
+        result=sheet.values().get(spreadsheetId=SHEET_ID,
+                                   range=f"{SHEET_NAME}!A:V").execute()
+        existing=result.get("values",[])
+        existing_nums=set()
         for row in existing[1:]:
-            if len(row)>13 and row[13]:
-                existing_nums.add(str(row[13]).strip())
-        print(f"  Existing: {len(existing)-1 if existing else 0} rows")
-        new_recs = [r for r in records
-                    if str(r.get("doc_num","")).strip() not in existing_nums]
+            if len(row)>13 and row[13]: existing_nums.add(str(row[13]).strip())
+        print(f"  Existing: {len(existing)-1 if existing else 0}")
+        new_recs=[r for r in records
+                  if str(r.get("doc_num","")).strip() not in existing_nums]
         print(f"  New to add: {len(new_recs)}")
-        if not new_recs:
-            print("  ✅ Sheet up to date"); return
+        if not new_recs: print("  ✅ Up to date"); return
         def make_row(r):
             fn,ln=split_name(r.get("owner",""))
             return [fn,ln,
@@ -618,30 +652,23 @@ def push_to_sheets(records):
                 str(r.get("amount","")),str(r.get("score",0)),
                 " | ".join(r.get("flags",[])),
                 "Bexar County Clerk",r.get("clerk_url",""),
-                "","","",
-            ]
+                "","",""]
         new_rows=[make_row(r) for r in new_recs]
         if not existing:
             sheet.values().update(
-                spreadsheetId=SHEET_ID, range=f"{SHEET_NAME}!A1",
+                spreadsheetId=SHEET_ID,range=f"{SHEET_NAME}!A1",
                 valueInputOption="RAW",
-                body={"values":[SHEET_HEADERS]+new_rows},
-            ).execute()
-            print(f"  ✅ Created with {len(new_rows)} leads")
+                body={"values":[SHEET_HEADERS]+new_rows}).execute()
         else:
-            sheet.batchUpdate(
-                spreadsheetId=SHEET_ID,
-                body={"requests":[{"insertDimension":{
+            sheet.batchUpdate(spreadsheetId=SHEET_ID,body={"requests":[{
+                "insertDimension":{
                     "range":{"sheetId":0,"dimension":"ROWS",
                              "startIndex":1,"endIndex":1+len(new_rows)},
-                    "inheritFromBefore":False,
-                }}]},
-            ).execute()
+                    "inheritFromBefore":False}}]}).execute()
             sheet.values().update(
-                spreadsheetId=SHEET_ID, range=f"{SHEET_NAME}!A2",
-                valueInputOption="RAW", body={"values":new_rows},
-            ).execute()
-            print(f"  ✅ {len(new_rows)} new leads added to top")
+                spreadsheetId=SHEET_ID,range=f"{SHEET_NAME}!A2",
+                valueInputOption="RAW",body={"values":new_rows}).execute()
+        print(f"  ✅ {len(new_rows)} leads added to top of sheet")
         print(f"  🔗 https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit")
     except Exception as e:
         print(f"  ✗ Sheets: {e}")
@@ -653,7 +680,6 @@ async def main():
     print("  Bexar County Motivated Seller Scraper")
     print(f"  {datetime.utcnow().isoformat()} UTC")
     print("="*60)
-
     s_mm,e_mm   = date_range_mm()
     s_iso,e_iso = date_range_iso()
     print(f"\n📅 Window: {s_iso} → {e_iso}\n")
@@ -663,7 +689,6 @@ async def main():
     print("\n📦 Loading BCAD parcel data …")
     parcel = ParcelLookup()
 
-    # Scrape
     all_recs=[]
     proxies_to_try=[]
     if proxy_host:
@@ -676,64 +701,57 @@ async def main():
         print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct'} …")
         recs=await playwright_scrape(s_mm,e_mm,s_iso,ph,pp)
         if recs: all_recs=recs; print(f"  ✅ {len(recs)} raw records"); break
-        else: print("  ✗ No records — trying next proxy …")
+        else: print("  ✗ Trying next …")
 
     # Dedup
-    seen=set(); all_unique=[]
+    seen=set(); unique=[]
     for r in all_recs:
         k=f"{r['doc_num']}|{r.get('doc_type','')}"
-        if k not in seen: seen.add(k); all_unique.append(r)
+        if k not in seen: seen.add(k); unique.append(r)
 
     # Date filter
     in_window=[]
-    for r in all_unique:
+    for r in unique:
         fd=r.get("filed","")
         if not fd or fd>=s_iso: in_window.append(r)
 
-    print(f"\n  Raw: {len(all_recs)} | Unique: {len(all_unique)} | In window: {len(in_window)}")
+    print(f"\n  Raw: {len(all_recs)} | Unique: {len(unique)} | In window: {len(in_window)}")
 
-    # ── Split into motivated vs all ────────────────────────────────────────
-    motivated = []
-    all_leads  = []
-
+    # Enrich + score all
+    motivated=[]
     for r in in_window:
-        dt = r.get("doc_type","").upper()
-
-        # Enrich with parcel data
         hit=parcel.lookup(r.get("owner",""))
         if hit:
             for f in ["prop_address","prop_city","prop_zip",
                       "mail_address","mail_city","mail_state","mail_zip"]:
                 if hit.get(f): r[f]=hit[f]
-
-        # Score every record
-        r["flags"],r["score"]=score_record(r, s_iso)
-
-        all_leads.append(r)
-
-        # Only add to motivated list if it's a target type
-        # AND not in the exclude list
-        if dt in TARGET_TYPES and dt not in EXCLUDE_TYPES:
+        r["flags"],r["score"]=score_record(r,s_iso)
+        if r.get("is_motivated",False):
             motivated.append(r)
 
     motivated.sort(key=lambda x:x["score"],reverse=True)
-    all_leads.sort(key=lambda x:x["score"],reverse=True)
+    in_window.sort(key=lambda x:x["score"],reverse=True)
 
-    with_addr = sum(1 for r in motivated if r.get("prop_address") and r["prop_address"]!="N/A")
-
-    # Doc type breakdown
+    # Print doc type breakdown
     from collections import Counter
-    type_counts=Counter(r["doc_type"] for r in motivated)
-    print("\n  📊 Motivated seller breakdown:")
-    for dt,cnt in sorted(type_counts.items(),key=lambda x:-x[1]):
+    all_types=Counter(r.get("raw_type","?") for r in in_window)
+    motivated_types=Counter(r["doc_type"] for r in motivated)
+    print(f"\n  All doc types found (top 15):")
+    for t,n in all_types.most_common(15):
+        code,label,is_m=normalise_type(t)
+        mark="✅" if is_m else "✗"
+        print(f"    {mark} {t:25} → {code:12} {n}")
+    print(f"\n  Motivated seller types:")
+    for dt,cnt in sorted(motivated_types.items(),key=lambda x:-x[1]):
         print(f"    {dt:12} {DOC_TYPE_MAP.get(dt,dt):25} {cnt}")
 
-    high_score = [r for r in motivated if r["score"]>=70]
-    print(f"\n  Total motivated leads:  {len(motivated)}")
-    print(f"  High score (70+):       {len(high_score)}")
-    print(f"  With address:           {with_addr}")
+    with_addr=sum(1 for r in motivated if r.get("prop_address") and r["prop_address"]!="N/A")
+    high_score=[r for r in motivated if r["score"]>=70]
+    print(f"\n  ✅ Motivated leads:  {len(motivated)}")
+    print(f"  ✅ High score (70+): {len(high_score)}")
+    print(f"  ✅ With address:     {with_addr}")
 
-    # ── Save dashboard JSON (motivated only) ──────────────────────────────
+    # Save
     payload={
         "fetched_at":   datetime.utcnow().isoformat()+"Z",
         "source":       "Bexar County Clerk / BCAD",
@@ -746,15 +764,13 @@ async def main():
         dest.write_text(json.dumps(payload,indent=2,default=str))
         print(f"💾 {dest}")
 
-    # ── Save CSV (all leads for GHL) ──────────────────────────────────────
-    export_csv(all_leads, DATA_DIR/"leads.csv")
-    export_csv(motivated, DATA_DIR/"motivated_leads.csv")
-    print(f"📊 leads.csv ({len(all_leads)}) + motivated_leads.csv ({len(motivated)})")
+    export_csv(in_window,     DATA_DIR/"leads.csv")
+    export_csv(motivated,     DATA_DIR/"motivated_leads.csv")
+    print(f"📊 leads.csv ({len(in_window)}) | motivated_leads.csv ({len(motivated)})")
 
-    # ── Push motivated leads to Google Sheets ─────────────────────────────
     push_to_sheets(motivated)
 
-    print(f"\n🎉 Done — {len(motivated)} motivated leads | {len(high_score)} high score.\n")
+    print(f"\n🎉 Done — {len(motivated)} motivated leads | {len(high_score)} high score (70+).\n")
 
 if __name__=="__main__":
     asyncio.run(main())
