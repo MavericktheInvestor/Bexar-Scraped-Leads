@@ -51,6 +51,8 @@ DOC_TYPE_MAP = {
     "PRO":      "Probate",
     "NOC":      "Notice of Commencement",
     "RELLP":    "Release Lis Pendens",
+    "AFFH":     "Affidavit of Heirship",
+    "SUBTRST":  "Substitute Trustee",
 }
 
 # ── Portal full-word → standard code mapping ───────────────────────────────────
@@ -105,18 +107,42 @@ TYPE_ALIAS = {
     "MEDICAIDLIEN":         "MEDLN",
     "MEDLN":                "MEDLN",
 
-    # Probate
-    "PROBATE":              "PRO",
-    "PRO":                  "PRO",
+    # Probate — many portal variants
+    "PROBATE":                      "PRO",
+    "PRO":                          "PRO",
+    "PROBATEDOCUMENT":              "PRO",
+    "PROBATEDOC":                   "PRO",
+    "LETTERSTESTAMENTARY":          "PRO",
+    "LETTERSOFADMINISTRATION":      "PRO",
+    "WILLPROBATE":                  "PRO",
+
+    # Affidavit of Heirship — estate/inheritance signal
+    "AFFIDAVITOFHEIRSHIP":          "AFFH",
+    "AFFIDAVIT OF HEIRSHIP":        "AFFH",
+    "AFFH":                         "AFFH",
+    "HEIRSHIPAFFIDAVIT":            "AFFH",
+    "AFFIDAVITOFHEIRSHIPS":         "AFFH",
+    "HEIRSHIP":                     "AFFH",
+    "AFFIDAVITOFHEIRS":             "AFFH",
+
+    # Substitute Trustee — strong pre-foreclosure signal
+    "SUBSTITUTETRUSTEE":            "SUBTRST",
+    "SUBSTITUTE TRUSTEE":           "SUBTRST",
+    "SUBTRST":                      "SUBTRST",
+    "SUBSTITUTIONOFTRUSTEE":        "SUBTRST",
+    "SUBSTITUTION OF TRUSTEE":      "SUBTRST",
+    "APPOINTMENTOFSUBTRUSTEEE":     "SUBTRST",
+    "APPOINTMENTOFSUBSTITUTE":      "SUBTRST",
+    "SUBTRUSTEE":                   "SUBTRST",
 
     # General lien
-    "LIEN":                 "LN",
-    "LN":                   "LN",
+    "LIEN":                         "LN",
+    "LN":                           "LN",
 
     # Notice of commencement
-    "NOTICEOFCOMMENCEMENT": "NOC",
-    "NOC":                  "NOC",
-    "NOTICE":               "NOC",
+    "NOTICEOFCOMMENCEMENT":         "NOC",
+    "NOC":                          "NOC",
+    "NOTICE":                       "NOC",
 }
 
 TARGET_TYPES = set(DOC_TYPE_MAP.keys())
@@ -232,8 +258,14 @@ def score_record(r, cutoff):
         flags.append("Notice of commencement"); sc+=5
     if dt=="LN":
         flags.append("General lien"); sc+=8
+    if dt=="AFFH":
+        flags.append("Affidavit of heirship"); sc+=18  # estate = very motivated
+    if dt=="SUBTRST":
+        flags.append("Substitute trustee"); sc+=22  # imminent foreclosure signal
     if "Lis pendens" in flags and "Pre-foreclosure" in flags:
         sc+=20
+    if "Substitute trustee" in flags and "Lis pendens" in flags:
+        sc+=15  # trustee + lis pendens = foreclosure imminent
     if any(k in own for k in ("LLC","INC","CORP","LTD","TRUST")):
         flags.append("LLC / corp owner"); sc+=10
     if amt>100_000: sc+=15
@@ -746,10 +778,14 @@ async def main():
         print(f"    {dt:12} {DOC_TYPE_MAP.get(dt,dt):25} {cnt}")
 
     with_addr=sum(1 for r in motivated if r.get("prop_address") and r["prop_address"]!="N/A")
-    high_score=[r for r in motivated if r["score"]>=70]
-    print(f"\n  ✅ Motivated leads:  {len(motivated)}")
-    print(f"  ✅ High score (70+): {len(high_score)}")
-    print(f"  ✅ With address:     {with_addr}")
+    high_score =[r for r in motivated if r["score"]>=70]
+    heirship   =[r for r in motivated if r["doc_type"]=="AFFH"]
+    sub_trustee=[r for r in motivated if r["doc_type"]=="SUBTRST"]
+    print(f"\n  ✅ Motivated leads:       {len(motivated)}")
+    print(f"  ✅ High score (70+):      {len(high_score)}")
+    print(f"  ✅ With address:          {with_addr}")
+    print(f"  ✅ Affidavit of Heirship: {len(heirship)}")
+    print(f"  ✅ Substitute Trustee:    {len(sub_trustee)}")
 
     # Save
     payload={
