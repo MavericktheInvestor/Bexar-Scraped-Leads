@@ -1,0 +1,53 @@
+name: Process Inmate Leads
+
+on:
+  workflow_dispatch:          # run manually whenever you upload a new CSV
+  push:
+    paths:
+      - 'data/inmates.csv'
+      - 'data/BEXAR INMATE*.csv'
+      - 'data/bexar inmate*.csv'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "inmates"
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Create output directories
+        run: mkdir -p data
+
+      - name: Run inmate processor
+        run: python scraper/inmates.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/inmate_leads.csv data/inmate_records.json || true
+          git diff --cached --quiet || git commit -m "inmates: $(date -u +%Y-%m-%d)"
+          git push origin main || (git pull --rebase origin main && git push origin main)
