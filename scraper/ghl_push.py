@@ -116,8 +116,15 @@ def discover_ids():
                 print(f"  ✅ Got {len(pipelines)} pipeline(s) via {path}")
                 break
         except Exception as e:
-            last_error = str(e)
-            print(f"    ✗ {e[:300]}")
+            if hasattr(e, "read"):
+                try:
+                    err_body = e.read().decode(errors="replace")[:400]
+                    last_error = f"HTTP {getattr(e, 'code', '?')}: {err_body}"
+                except Exception:
+                    last_error = str(e)
+            else:
+                last_error = str(e)
+            print(f"    ✗ {last_error[:300]}")
 
     if not pipelines:
         print(f"\n  ❌ Could not fetch pipelines. Last error: {last_error}")
