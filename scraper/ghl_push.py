@@ -25,6 +25,7 @@ GHL_STAGE_ID    = os.environ.get("GHL_STAGE_ID", "")      # set after --discover
 
 API_BASE    = "https://services.leadconnectorhq.com"
 API_VERSION = "2021-07-28"
+API_VERSION_NEW = "2021-04-15"   # some endpoints require older version
 RATE_LIMIT_DELAY = 0.25   # seconds between API calls (GHL: 100 req/10s)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -35,14 +36,14 @@ SHEET_NAME = "Skip Trace Queue"
 
 # ── GHL API client ────────────────────────────────────────────────────────────
 
-def ghl_get(path, params=None):
+def ghl_get(path, params=None, version=None):
     import urllib.request, urllib.parse
     url = f"{API_BASE}{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={
         "Authorization": f"Bearer {GHL_API_KEY}",
-        "Version":       API_VERSION,
+        "Version":       version or API_VERSION,
         "Content-Type":  "application/json",
     })
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -93,20 +94,50 @@ def ghl_put(path, body):
 def discover_ids():
     """Print all pipeline + stage IDs for this location. Run once to configure."""
     print("\n🔍 Discovering pipelines for location:", GHL_LOCATION_ID)
-    data = ghl_get("/opportunities/pipelines", {"locationId": GHL_LOCATION_ID})
-    pipelines = data.get("pipelines", [])
+
+    pipelines = []
+    # Try every known endpoint + version combo until one works
+    attempts = [
+        ("/opportunities/pipelines",             {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
+        ("/opportunities/pipelines",             {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
+        (f"/locations/{GHL_LOCATION_ID}/pipelines", {},                           "2021-07-28"),
+        (f"/locations/{GHL_LOCATION_ID}/pipelines", {},                           "2021-04-15"),
+        ("/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
+        ("/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
+    ]
+    last_error = ""
+    for path, params, ver in attempts:
+        try:
+            print(f"  Trying {path} (version {ver}) …")
+            data = ghl_get(path, params, version=ver)
+            pipelines = data.get("pipelines", [])
+            if not pipelines:
+                # Some responses wrap differently
+                pipelines = data.get("data", []) or (data if isinstance(data, list) else [])
+            if pipelines:
+                print(f"  ✅ Got {len(pipelines)} pipeline(s) via {path}")
+                break
+        except Exception as e:
+            last_error = str(e)
+            print(f"    ✗ {e}")
+
     if not pipelines:
-        print("  ⚠  No pipelines found — check Location ID and API key scopes")
+        print(f"\n  ❌ Could not fetch pipelines. Last error: {last_error}")
+        print("\n  Troubleshooting:")
+        print("  1. In GHL: Settings → Private Integrations → your integration")
+        print("     → make sure 'Opportunities: Read' scope is enabled")
+        print("  2. Make sure the integration is installed/authorized on your sub-account")
+        print("  3. Try regenerating the token and updating GHL_API_KEY secret")
         return
 
     print(f"\n  Found {len(pipelines)} pipeline(s):\n")
     for pl in pipelines:
-        print(f"  Pipeline: {pl['name']}")
-        print(f"    ID: {pl['id']}")
+        print(f"  Pipeline: {pl.get('name','?')}")
+        print(f"    ID: {pl.get('id','?')}")
         print(f"    Stages:")
         for st in pl.get("stages", []):
-            print(f"      [{st['position']}] {st['name']}")
-            print(f"           ID: {st['id']}")
+            print(f"      [{st.get('position','?')}] {st.get('name','?')}")
+            print(f"           ID: {st.get('id','?')}")
         print()
 
     print("─" * 60)
