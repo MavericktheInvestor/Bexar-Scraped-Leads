@@ -130,22 +130,35 @@ def split_name(full_name):
 def find_inmate_csv():
     """Find the most recent TDCJ CSV in the data folder."""
     data_dir = Path(__file__).parent.parent / "data"
-    # Match both 'inmates.csv' and 'BEXAR INMATE *.csv'
-    patterns = [
-        str(data_dir / "inmates.csv"),
-        str(data_dir / "BEXAR INMATE*.csv"),
-        str(data_dir / "bexar inmate*.csv"),
-        str(data_dir / "inmate*.csv"),
-    ]
+    print(f"  Looking in: {data_dir.resolve()}")
+
+    # List everything in data dir for debugging
+    if data_dir.exists():
+        all_files = list(data_dir.iterdir())
+        print(f"  Files in data/: {[f.name for f in all_files]}")
+    else:
+        print(f"  ⚠  data/ directory not found at {data_dir.resolve()}")
+        return None
+
+    # Match both 'inmates.csv' and 'BEXAR INMATE *.csv' (case-insensitive via lower)
     candidates = []
-    for pat in patterns:
-        candidates.extend(glob.glob(pat, recursive=False))
+    for f in data_dir.iterdir():
+        name_lower = f.name.lower()
+        if f.suffix.lower() == ".csv" and (
+            "inmate" in name_lower or name_lower == "inmates.csv"
+        ):
+            # Skip output files we generate
+            if f.name in ("inmate_leads.csv",):
+                continue
+            candidates.append(str(f))
 
     if not candidates:
+        print(f"  ⚠  No inmate CSV found in {data_dir.resolve()}")
         return None
 
     # Return most recently modified
     candidates.sort(key=lambda p: Path(p).stat().st_mtime, reverse=True)
+    print(f"  Found: {[Path(c).name for c in candidates]}")
     return candidates[0]
 
 
@@ -377,7 +390,11 @@ def main():
     high = sum(1 for r in processed if r["score"] >= 70)
     print(f"\n✅ {len(processed)} inmate leads")
     print(f"   High score (70+): {high}")
-    print(f"   Score range: {processed[-1]['score']} – {processed[0]['score']}")
+    if processed:
+        print(f"   Score range: {processed[-1]['score']} – {processed[0]['score']}")
+    else:
+        print("   ⚠  No qualifying records found — check CSV path/format")
+        return
 
     # Sample top 5
     print("\n🏆 Top 5 leads:")
