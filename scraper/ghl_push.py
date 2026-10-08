@@ -25,7 +25,6 @@ GHL_STAGE_ID    = os.environ.get("GHL_STAGE_ID", "")      # set after --discover
 
 API_BASE    = "https://services.leadconnectorhq.com"
 API_VERSION = "2021-07-28"
-API_VERSION_V2 = "2021-07-28"   # v2 private integrations still use this header
 RATE_LIMIT_DELAY = 0.25   # seconds between API calls (GHL: 100 req/10s)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -42,11 +41,12 @@ def ghl_headers(version=None):
         "Version":       version or API_VERSION,
         "Content-Type":  "application/json",
         "Accept":        "application/json",
+        "User-Agent":    "Mozilla/5.0 (compatible; GHL-Integration/1.0)",
     }
 
-def ghl_get(path, params=None, version=None):
+def ghl_get(path, params=None, version=None, base=None):
     import urllib.request, urllib.parse
-    url = f"{API_BASE}{path}"
+    url = f"{base or API_BASE}{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers=ghl_headers(version))
@@ -54,9 +54,9 @@ def ghl_get(path, params=None, version=None):
         return json.loads(resp.read())
 
 
-def ghl_post(path, body, version=None):
+def ghl_post(path, body, version=None, base=None):
     import urllib.request
-    url  = f"{API_BASE}{path}"
+    url  = f"{base or API_BASE}{path}"
     data = json.dumps(body).encode()
     req  = urllib.request.Request(url, data=data, headers=ghl_headers(version), method="POST")
     try:
@@ -92,22 +92,25 @@ def discover_ids():
 
     pipelines = []
     # GHL API v2 (Private Integrations) — try all known endpoint patterns
+    V1_BASE = "https://rest.gohighlevel.com"
+    V2_BASE = "https://services.leadconnectorhq.com"
+
+    # (path, params, version, base_url)
     attempts = [
-        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
-        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
-        (f"/locations/{GHL_LOCATION_ID}/pipelines",   {},                              "2021-07-28"),
-        (f"/locations/{GHL_LOCATION_ID}/pipelines",   {},                              "2021-04-15"),
-        ("/pipelines",                                {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
-        ("/pipelines",                                {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
-        # v2 specific paths
-        (f"/opportunities/pipelines",                 {"locationId": GHL_LOCATION_ID}, "2023-11-15"),
-        (f"/crm/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
+        # v1 API — different base, no Cloudflare WAF issue
+        ("/v1/pipelines/",                            {"locationId": GHL_LOCATION_ID}, None,          V1_BASE),
+        # v2 API — services.leadconnectorhq.com (may hit Cloudflare WAF from CI)
+        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-07-28",  V2_BASE),
+        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-04-15",  V2_BASE),
+        (f"/locations/{GHL_LOCATION_ID}/pipelines",   {},                              "2021-07-28",  V2_BASE),
+        ("/pipelines",                                {"locationId": GHL_LOCATION_ID}, "2021-07-28",  V2_BASE),
+        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2023-11-15",  V2_BASE),
     ]
     last_error = ""
-    for path, params, ver in attempts:
+    for path, params, ver, base in attempts:
         try:
-            print(f"  Trying {path} (version {ver}) …")
-            data = ghl_get(path, params, version=ver)
+            print(f"  Trying {base}{path} (version {ver}) …")
+            data = ghl_get(path, params, version=ver, base=base)
             pipelines = data.get("pipelines", [])
             if not pipelines:
                 # Some responses wrap differently
