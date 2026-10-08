@@ -1,0 +1,62 @@
+name: Push Leads to GHL (Jarvis)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'discover = print pipeline IDs only | push = send leads to CRM'
+        required: true
+        default: 'discover'
+        type: choice
+        options:
+          - discover
+          - push
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "ghl-push"
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Create output directories
+        run: mkdir -p data
+
+      - name: Discover pipeline IDs (discover mode)
+        if: ${{ github.event.inputs.mode == 'discover' }}
+        run: python scraper/ghl_push.py --discover
+        env:
+          PYTHONUNBUFFERED: "1"
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+
+      - name: Push leads to GHL (push mode)
+        if: ${{ github.event.inputs.mode == 'push' }}
+        run: python scraper/ghl_push.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          GHL_PIPELINE_ID: ${{ secrets.GHL_PIPELINE_ID }}
+          GHL_STAGE_ID: ${{ secrets.GHL_STAGE_ID }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
