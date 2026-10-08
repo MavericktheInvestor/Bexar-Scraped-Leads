@@ -25,7 +25,7 @@ GHL_STAGE_ID    = os.environ.get("GHL_STAGE_ID", "")      # set after --discover
 
 API_BASE    = "https://services.leadconnectorhq.com"
 API_VERSION = "2021-07-28"
-API_VERSION_NEW = "2021-04-15"   # some endpoints require older version
+API_VERSION_V2 = "2021-07-28"   # v2 private integrations still use this header
 RATE_LIMIT_DELAY = 0.25   # seconds between API calls (GHL: 100 req/10s)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -36,56 +36,51 @@ SHEET_NAME = "Skip Trace Queue"
 
 # ── GHL API client ────────────────────────────────────────────────────────────
 
+def ghl_headers(version=None):
+    return {
+        "Authorization": f"Bearer {GHL_API_KEY}",
+        "Version":       version or API_VERSION,
+        "Content-Type":  "application/json",
+        "Accept":        "application/json",
+    }
+
 def ghl_get(path, params=None, version=None):
     import urllib.request, urllib.parse
     url = f"{API_BASE}{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {GHL_API_KEY}",
-        "Version":       version or API_VERSION,
-        "Content-Type":  "application/json",
-    })
+    req = urllib.request.Request(url, headers=ghl_headers(version))
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read())
 
 
-def ghl_post(path, body):
+def ghl_post(path, body, version=None):
     import urllib.request
     url  = f"{API_BASE}{path}"
     data = json.dumps(body).encode()
-    req  = urllib.request.Request(url, data=data, headers={
-        "Authorization": f"Bearer {GHL_API_KEY}",
-        "Version":       API_VERSION,
-        "Content-Type":  "application/json",
-    }, method="POST")
+    req  = urllib.request.Request(url, data=data, headers=ghl_headers(version), method="POST")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read()), resp.status
     except Exception as e:
-        # Try to read error body
         if hasattr(e, "read"):
-            body = e.read().decode(errors="replace")
-            raise RuntimeError(f"HTTP {getattr(e, 'code', '?')}: {body}") from e
+            err_body = e.read().decode(errors="replace")
+            raise RuntimeError(f"HTTP {getattr(e, 'code', '?')}: {err_body}") from e
         raise
 
 
-def ghl_put(path, body):
+def ghl_put(path, body, version=None):
     import urllib.request
     url  = f"{API_BASE}{path}"
     data = json.dumps(body).encode()
-    req  = urllib.request.Request(url, data=data, headers={
-        "Authorization": f"Bearer {GHL_API_KEY}",
-        "Version":       API_VERSION,
-        "Content-Type":  "application/json",
-    }, method="PUT")
+    req  = urllib.request.Request(url, data=data, headers=ghl_headers(version), method="PUT")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read()), resp.status
     except Exception as e:
         if hasattr(e, "read"):
-            body = e.read().decode(errors="replace")
-            raise RuntimeError(f"HTTP {getattr(e, 'code', '?')}: {body}") from e
+            err_body = e.read().decode(errors="replace")
+            raise RuntimeError(f"HTTP {getattr(e, 'code', '?')}: {err_body}") from e
         raise
 
 
@@ -96,14 +91,17 @@ def discover_ids():
     print("\n🔍 Discovering pipelines for location:", GHL_LOCATION_ID)
 
     pipelines = []
-    # Try every known endpoint + version combo until one works
+    # GHL API v2 (Private Integrations) — try all known endpoint patterns
     attempts = [
-        ("/opportunities/pipelines",             {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
-        ("/opportunities/pipelines",             {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
-        (f"/locations/{GHL_LOCATION_ID}/pipelines", {},                           "2021-07-28"),
-        (f"/locations/{GHL_LOCATION_ID}/pipelines", {},                           "2021-04-15"),
-        ("/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
-        ("/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
+        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
+        ("/opportunities/pipelines",                  {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
+        (f"/locations/{GHL_LOCATION_ID}/pipelines",   {},                              "2021-07-28"),
+        (f"/locations/{GHL_LOCATION_ID}/pipelines",   {},                              "2021-04-15"),
+        ("/pipelines",                                {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
+        ("/pipelines",                                {"locationId": GHL_LOCATION_ID}, "2021-04-15"),
+        # v2 specific paths
+        (f"/opportunities/pipelines",                 {"locationId": GHL_LOCATION_ID}, "2023-11-15"),
+        (f"/crm/pipelines",                           {"locationId": GHL_LOCATION_ID}, "2021-07-28"),
     ]
     last_error = ""
     for path, params, ver in attempts:
@@ -119,7 +117,7 @@ def discover_ids():
                 break
         except Exception as e:
             last_error = str(e)
-            print(f"    ✗ {e}")
+            print(f"    ✗ {e[:300]}")
 
     if not pipelines:
         print(f"\n  ❌ Could not fetch pipelines. Last error: {last_error}")
