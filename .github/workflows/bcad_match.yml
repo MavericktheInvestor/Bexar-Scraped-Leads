@@ -1,0 +1,60 @@
+name: BCAD Property Match (Inmates)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_leads:
+        description: 'Max inmates to check (default 500, blank = all)'
+        required: false
+        default: '500'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "bcad-match"
+  cancel-in-progress: false
+
+jobs:
+  match:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install playwright requests beautifulsoup4 \
+                      google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Create output directories
+        run: mkdir -p data
+
+      - name: Run BCAD property matcher
+        run: python scraper/bcad_match.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          PROXY_USER: ${{ secrets.PROXY_USER }}
+          PROXY_PASS: ${{ secrets.PROXY_PASS }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          BCAD_MAX_LEADS: ${{ github.event.inputs.max_leads || '500' }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add data/inmate_property_matches.csv data/inmate_records.json || true
+          git diff --cached --quiet || git commit -m "bcad-match: $(date -u +%Y-%m-%d)"
+          git push origin main || (git pull --rebase origin main && git push origin main)
