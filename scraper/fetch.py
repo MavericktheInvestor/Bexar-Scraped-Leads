@@ -745,6 +745,70 @@ async def main():
 
     motivated.sort(key=lambda x:x["score"],reverse=True)
 
+    # ── Owner-level merge ─────────────────────────────────────────────────────
+    # If the same owner has multiple filings, stack their flags/doc types and
+    # keep the highest score. This prevents burning 2 skip traces on one person.
+    def owner_key(r):
+        """Normalised key: uppercase, strip punctuation, last+first tokens."""
+        raw = re.sub(r"[^A-Z0-9 ]", "", (r.get("owner") or "").upper().strip())
+        return re.sub(r"\s+", " ", raw)
+
+    owner_map = {}
+    for r in motivated:
+        k = owner_key(r)
+        if not k:
+            owner_map[id(r)] = r   # anonymous — keep as-is
+            continue
+        if k not in owner_map:
+            owner_map[k] = dict(r)
+            owner_map[k]["_doc_types"] = [r.get("doc_type","")]
+            owner_map[k]["_doc_nums"]  = [r.get("doc_num","")]
+        else:
+            existing = owner_map[k]
+            # Stack doc types and flags
+            dt = r.get("doc_type","")
+            if dt and dt not in existing["_doc_types"]:
+                existing["_doc_types"].append(dt)
+            dn = r.get("doc_num","")
+            if dn and dn not in existing["_doc_nums"]:
+                existing["_doc_nums"].append(dn)
+            for flag in r.get("flags",[]):
+                if flag not in existing["flags"]:
+                    existing["flags"].append(flag)
+            # Raise score if stacking distress signals (cap 100)
+            if r["score"] > existing["score"]:
+                existing["score"] = r["score"]
+            if len(existing["_doc_types"]) > 1:
+                existing["score"] = min(existing["score"] + 10, 100)
+                if "Multiple distress signals" not in existing["flags"]:
+                    existing["flags"].append("Multiple distress signals")
+            # Prefer the record with the best address
+            if not existing.get("prop_address") and r.get("prop_address"):
+                for f in ["prop_address","prop_city","prop_zip",
+                          "mail_address","mail_city","mail_state","mail_zip"]:
+                    existing[f] = r.get(f, existing.get(f,""))
+
+    motivated = list(owner_map.values())
+    # Rebuild doc_num as pipe-joined list for multi-filing owners
+    for r in motivated:
+        if "_doc_nums" in r:
+            r["doc_num"] = " | ".join(r.pop("_doc_nums"))
+            r.pop("_doc_types", None)
+
+    motivated.sort(key=lambda x:x["score"],reverse=True)
+    print(f"  ✅ After owner merge: {len(motivated)} unique owners")
+
+    # ── Business / LLC filter ─────────────────────────────────────────────────
+    # Tag corp-owned records — excluded from skip trace queue but kept in sheet
+    BUSINESS_KEYWORDS = ("LLC","INC","CORP","LTD","TRUST","LP ","L.P.","ASSOC",
+                         "PROPERTIES","HOLDINGS","INVESTMENTS","REALTY","GROUP",
+                         "PARTNERS","VENTURES","CAPITAL","FUND","ESTATE OF")
+    for r in motivated:
+        own = (r.get("owner") or "").upper()
+        r["is_business"] = any(k in own for k in BUSINESS_KEYWORDS)
+        if r["is_business"] and "Business / LLC owner" not in r["flags"]:
+            r["flags"].append("Business / LLC owner")
+
     # Breakdown
     from collections import Counter
     type_counts=Counter(r["doc_type"] for r in motivated)

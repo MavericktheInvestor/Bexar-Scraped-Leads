@@ -1,0 +1,65 @@
+name: Build Skip Trace Queue
+
+on:
+  workflow_dispatch:
+    inputs:
+      score_threshold:
+        description: 'Min score to include (default 70)'
+        required: false
+        default: '70'
+      monthly_cap:
+        description: 'Max leads to queue (default 20000)'
+        required: false
+        default: '20000'
+  # Also rebuild queue automatically after every daily scrape
+  workflow_run:
+    workflows: ["Scrape Bexar County Leads"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "skip-trace-queue"
+  cancel-in-progress: false
+
+jobs:
+  build-queue:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Create output directories
+        run: mkdir -p data
+
+      - name: Build skip trace queue
+        run: python scraper/skip_trace_queue.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SKIP_TRACE_MONTHLY_CAP: ${{ github.event.inputs.monthly_cap || '20000' }}
+
+      - name: Commit and push results
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add data/skip_trace_queue.csv || true
+          git diff --cached --quiet || git commit -m "skip-trace-queue: $(date -u +%Y-%m-%d)
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015rL9cgZLZpq1VJrdoU7ka8"
+          git push origin main || (git pull --rebase origin main && git push origin main)
