@@ -1,8 +1,8 @@
 {
-  "fetched_at": "2026-10-07T22:02:44.495698Z",
+  "fetched_at": "2026-10-08T03:06:04.934765Z",
   "source": "TDCJ / Bexar County",
   "total": 8521,
-  "high_score": 1671,
+  "high_score": 1668,
   "records": [
     {
       "last_name": "Rodriguez",
@@ -3935,23 +3935,6 @@
         "VIOLENT OFFENSE",
         "SENTENCED <1YR",
         "RELEASING <1YR"
-      ]
-    },
-    {
-      "last_name": "Fuentes",
-      "first_name": "Ralph",
-      "full_name": "FUENTES,RALPH",
-      "tdcj_num": "2613019",
-      "sid_num": "2175407",
-      "facility": "Garza West",
-      "offense": "AGG ASLT W/DEADLY WPN",
-      "sentence_date": "4/10/2026",
-      "projected_release": "9/4/2045",
-      "sentence_years": "20",
-      "score": 70,
-      "flags": [
-        "LIFE/LONG SENTENCE",
-        "RECENTLY SENTENCED"
       ]
     },
     {
@@ -17963,24 +17946,6 @@
       ]
     },
     {
-      "last_name": "Leal",
-      "first_name": "Manuel",
-      "full_name": "LEAL,MANUEL",
-      "tdcj_num": "2614161",
-      "sid_num": "7731317",
-      "facility": "Garza West",
-      "offense": "MAN DEL CS PG1 4-200G",
-      "sentence_date": "4/10/2026",
-      "projected_release": "10/16/2026",
-      "sentence_years": "5",
-      "score": 70,
-      "flags": [
-        "5+ YR SENTENCE",
-        "RECENTLY SENTENCED",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Rubio",
       "first_name": "Brandon",
       "full_name": "RUBIO,BRANDON",
@@ -27395,24 +27360,6 @@
       ]
     },
     {
-      "last_name": "Cedillo",
-      "first_name": "Juan",
-      "full_name": "CEDILLO,JUAN GILBERTO",
-      "tdcj_num": "2585182",
-      "sid_num": "50405390",
-      "facility": "Garza East",
-      "offense": "AGG ROBBERY",
-      "sentence_date": "10/7/2025",
-      "projected_release": "6/1/2035",
-      "sentence_years": "10",
-      "score": 70,
-      "flags": [
-        "10+ YR SENTENCE",
-        "VIOLENT OFFENSE",
-        "SENTENCED <1YR"
-      ]
-    },
-    {
       "last_name": "Ellison",
       "first_name": "Christian",
       "full_name": "ELLISON,CHRISTIAN D",
@@ -29112,24 +29059,6 @@
       ]
     },
     {
-      "last_name": "Haynes",
-      "first_name": "William",
-      "full_name": "HAYNES,WILLIAM FRANKLIN",
-      "tdcj_num": "2613023",
-      "sid_num": "4133113",
-      "facility": "Garza West",
-      "offense": "POSS CS PG 1/1-B 4-200G",
-      "sentence_date": "4/10/2026",
-      "projected_release": "3/7/2034",
-      "sentence_years": "8",
-      "score": 68,
-      "flags": [
-        "5+ YR SENTENCE",
-        "DRUG OFFENSE",
-        "RECENTLY SENTENCED"
-      ]
-    },
-    {
       "last_name": "Johnson",
       "first_name": "Jeffrey",
       "full_name": "JOHNSON,JEFFREY EARL",
@@ -29527,25 +29456,6 @@
         "10+ YR SENTENCE",
         "DRUG OFFENSE",
         "SENTENCED <1YR"
-      ]
-    },
-    {
-      "last_name": "Gomez",
-      "first_name": "Frank",
-      "full_name": "GOMEZ,FRANK",
-      "tdcj_num": "2583968",
-      "sid_num": "4845344",
-      "facility": "Lopez",
-      "offense": "POSS CS PG1/1-B L/1G",
-      "sentence_date": "10/7/2025",
-      "projected_release": "2/1/2027",
-      "sentence_years": "2",
-      "score": 68,
-      "flags": [
-        "2+ YR SENTENCE",
-        "DRUG OFFENSE",
-        "SENTENCED <1YR",
-        "RELEASING <1YR"
       ]
     },
     {
@@ -30795,6 +30705,25 @@
         "DRUG OFFENSE",
         "SENTENCED <1YR",
         "RELEASING <2YR"
+      ]
+    },
+    {
+      "last_name": "Garcia",
+      "first_name": "Mary",
+      "full_name": "GARCIA,MARY",
+      "tdcj_num": "2586542",
+      "sid_num": "6228698",
+      "facility": "Crain",
+      "offense": "POSS CS PG1 4-200G",
+      "sentence_date": "10/31/2025",
+      "projected_release": "10/9/2027",
+      "sentence_years": "2",
+      "score": 68,
+      "flags": [
+        "2+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "SENTENCED <1YR",
+        "RELEASING <1YR"
       ]
     },
     {
@@ -35779,6 +35708,23 @@
       ]
     },
     {
+      "last_name": "Fuentes",
+      "first_name": "Ralph",
+      "full_name": "FUENTES,RALPH",
+      "tdcj_num": "2613019",
+      "sid_num": "2175407",
+      "facility": "Garza West",
+      "offense": "AGG ASLT W/DEADLY WPN",
+      "sentence_date": "4/10/2026",
+      "projected_release": "9/4/2045",
+      "sentence_years": "20",
+      "score": 65,
+      "flags": [
+        "LIFE/LONG SENTENCE",
+        "SENTENCED <1YR"
+      ]
+    },
+    {
       "last_name": "Mackey",
       "first_name": "Frank",
       "full_name": "MACKEY,FRANK D",
@@ -39046,7 +38992,8 @@
       "score": 65,
       "flags": [
         "10+ YR SENTENCE",
-        "VIOLENT OFFENSE"
+        "VIOLENT OFFENSE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -40087,23 +40034,6 @@
         "5+ YR SENTENCE",
         "VIOLENT OFFENSE",
         "RELEASING <2YR"
-      ]
-    },
-    {
-      "last_name": "Jimenez",
-      "first_name": "Reynaldo",
-      "full_name": "JIMENEZ,REYNALDO SAUCEDO",
-      "tdcj_num": "2585187",
-      "sid_num": "6901249",
-      "facility": "Stevenson",
-      "offense": "AGG SEX ASLT CHILD",
-      "sentence_date": "10/7/2025",
-      "projected_release": "8/4/2053",
-      "sentence_years": "28",
-      "score": 65,
-      "flags": [
-        "LIFE/LONG SENTENCE",
-        "SENTENCED <1YR"
       ]
     },
     {
@@ -41818,6 +41748,24 @@
       "flags": [
         "LIFE/LONG SENTENCE",
         "SENTENCED <1YR"
+      ]
+    },
+    {
+      "last_name": "Leal",
+      "first_name": "Manuel",
+      "full_name": "LEAL,MANUEL",
+      "tdcj_num": "2614161",
+      "sid_num": "7731317",
+      "facility": "Garza West",
+      "offense": "MAN DEL CS PG1 4-200G",
+      "sentence_date": "4/10/2026",
+      "projected_release": "10/16/2026",
+      "sentence_years": "5",
+      "score": 65,
+      "flags": [
+        "5+ YR SENTENCE",
+        "SENTENCED <1YR",
+        "RELEASING <1YR"
       ]
     },
     {
@@ -46852,24 +46800,6 @@
       ]
     },
     {
-      "last_name": "Colunga",
-      "first_name": "Diamond",
-      "full_name": "COLUNGA,DIAMOND JEN",
-      "tdcj_num": "2613782",
-      "sid_num": "17873802",
-      "facility": "Plane",
-      "offense": "DWI 3RD MO",
-      "sentence_date": "4/10/2026",
-      "projected_release": "6/10/2027",
-      "sentence_years": "3",
-      "score": 65,
-      "flags": [
-        "2+ YR SENTENCE",
-        "RECENTLY SENTENCED",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Gandara",
       "first_name": "Alejandro",
       "full_name": "GANDARA,ALEJANDRO ARTURO",
@@ -48608,23 +48538,6 @@
       ]
     },
     {
-      "last_name": "Tello",
-      "first_name": "Rolando",
-      "full_name": "TELLO,ROLANDO JR",
-      "tdcj_num": "2614180",
-      "sid_num": "20242272",
-      "facility": "Garza West",
-      "offense": "AGG ASLT W/DEADLY WPN",
-      "sentence_date": "4/10/2026",
-      "projected_release": "9/29/2035",
-      "sentence_years": "10",
-      "score": 65,
-      "flags": [
-        "10+ YR SENTENCE",
-        "RECENTLY SENTENCED"
-      ]
-    },
-    {
       "last_name": "Walls",
       "first_name": "Joshua",
       "full_name": "WALLS,JOSHUA JAMES",
@@ -49804,24 +49717,6 @@
       ]
     },
     {
-      "last_name": "Burks",
-      "first_name": "Larry",
-      "full_name": "BURKS,LARRY KETUS",
-      "tdcj_num": "2585180",
-      "sid_num": "50285745",
-      "facility": "Stevenson",
-      "offense": "CRIMINAL MISCHIEF $30-$150K",
-      "sentence_date": "10/7/2025",
-      "projected_release": "6/25/2027",
-      "sentence_years": "8",
-      "score": 65,
-      "flags": [
-        "5+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Davis",
       "first_name": "Olijawon",
       "full_name": "DAVIS,OLIJAWON",
@@ -50177,6 +50072,23 @@
       "sentence_date": "5/20/2021",
       "projected_release": "10/16/2038",
       "sentence_years": "18",
+      "score": 65,
+      "flags": [
+        "10+ YR SENTENCE",
+        "VIOLENT OFFENSE"
+      ]
+    },
+    {
+      "last_name": "Cedillo",
+      "first_name": "Juan",
+      "full_name": "CEDILLO,JUAN GILBERTO",
+      "tdcj_num": "2585182",
+      "sid_num": "50405390",
+      "facility": "Garza East",
+      "offense": "AGG ROBBERY",
+      "sentence_date": "10/7/2025",
+      "projected_release": "6/1/2035",
+      "sentence_years": "10",
       "score": 65,
       "flags": [
         "10+ YR SENTENCE",
@@ -51669,6 +51581,24 @@
       ]
     },
     {
+      "last_name": "Haynes",
+      "first_name": "William",
+      "full_name": "HAYNES,WILLIAM FRANKLIN",
+      "tdcj_num": "2613023",
+      "sid_num": "4133113",
+      "facility": "Garza West",
+      "offense": "POSS CS PG 1/1-B 4-200G",
+      "sentence_date": "4/10/2026",
+      "projected_release": "3/7/2034",
+      "sentence_years": "8",
+      "score": 63,
+      "flags": [
+        "5+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "SENTENCED <1YR"
+      ]
+    },
+    {
       "last_name": "Escalante",
       "first_name": "Dario",
       "full_name": "ESCALANTE,DARIO",
@@ -52017,6 +51947,24 @@
         "5+ YR SENTENCE",
         "DRUG OFFENSE",
         "SENTENCED <1YR"
+      ]
+    },
+    {
+      "last_name": "Gomez",
+      "first_name": "Frank",
+      "full_name": "GOMEZ,FRANK",
+      "tdcj_num": "2583968",
+      "sid_num": "4845344",
+      "facility": "Lopez",
+      "offense": "POSS CS PG1/1-B L/1G",
+      "sentence_date": "10/7/2025",
+      "projected_release": "2/1/2027",
+      "sentence_years": "2",
+      "score": 63,
+      "flags": [
+        "2+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "RELEASING <1YR"
       ]
     },
     {
@@ -53742,25 +53690,6 @@
       ]
     },
     {
-      "last_name": "Garcia",
-      "first_name": "Mary",
-      "full_name": "GARCIA,MARY",
-      "tdcj_num": "2586542",
-      "sid_num": "6228698",
-      "facility": "Crain",
-      "offense": "POSS CS PG1 4-200G",
-      "sentence_date": "10/31/2025",
-      "projected_release": "10/9/2027",
-      "sentence_years": "2",
-      "score": 63,
-      "flags": [
-        "2+ YR SENTENCE",
-        "DRUG OFFENSE",
-        "SENTENCED <1YR",
-        "RELEASING <2YR"
-      ]
-    },
-    {
       "last_name": "Lopez",
       "first_name": "Alfredo",
       "full_name": "LOPEZ,ALFREDO",
@@ -54902,25 +54831,6 @@
       ]
     },
     {
-      "last_name": "Rodriguez",
-      "first_name": "Bernardo",
-      "full_name": "RODRIGUEZ,BERNARDO III",
-      "tdcj_num": "2584974",
-      "sid_num": "7008758",
-      "facility": "Stevenson",
-      "offense": "UNL POSS METAL/BODY ARMOR BY FEL",
-      "sentence_date": "10/7/2025",
-      "projected_release": "8/28/2028",
-      "sentence_years": "3",
-      "score": 63,
-      "flags": [
-        "2+ YR SENTENCE",
-        "DRUG OFFENSE",
-        "SENTENCED <1YR",
-        "RELEASING <2YR"
-      ]
-    },
-    {
       "last_name": "Estrada",
       "first_name": "Julio",
       "full_name": "ESTRADA,JULIO",
@@ -54990,6 +54900,24 @@
         "2+ YR SENTENCE",
         "DRUG OFFENSE",
         "RELEASING <1YR"
+      ]
+    },
+    {
+      "last_name": "Thatcher",
+      "first_name": "Ricky",
+      "full_name": "THATCHER,RICKY",
+      "tdcj_num": "2574661",
+      "sid_num": "7106629",
+      "facility": "McConnell",
+      "offense": "FELON POSS FIREARM",
+      "sentence_date": "7/21/2025",
+      "projected_release": "10/8/2028",
+      "sentence_years": "8",
+      "score": 63,
+      "flags": [
+        "5+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "RELEASING <2YR"
       ]
     },
     {
@@ -62764,6 +62692,24 @@
       "score": 60,
       "flags": [
         "LIFE/LONG SENTENCE"
+      ]
+    },
+    {
+      "last_name": "Segovia",
+      "first_name": "Henry",
+      "full_name": "SEGOVIA,HENRY",
+      "tdcj_num": "2586954",
+      "sid_num": "4443018",
+      "facility": "Lopez",
+      "offense": "OBSTRUCTION/RETALIATION",
+      "sentence_date": "10/23/2025",
+      "projected_release": "10/9/2027",
+      "sentence_years": "2",
+      "score": 60,
+      "flags": [
+        "2+ YR SENTENCE",
+        "SENTENCED <1YR",
+        "RELEASING <1YR"
       ]
     },
     {
@@ -70993,6 +70939,22 @@
       ]
     },
     {
+      "last_name": "Jimenez",
+      "first_name": "Reynaldo",
+      "full_name": "JIMENEZ,REYNALDO SAUCEDO",
+      "tdcj_num": "2585187",
+      "sid_num": "6901249",
+      "facility": "Stevenson",
+      "offense": "AGG SEX ASLT CHILD",
+      "sentence_date": "10/7/2025",
+      "projected_release": "8/4/2053",
+      "sentence_years": "28",
+      "score": 60,
+      "flags": [
+        "LIFE/LONG SENTENCE"
+      ]
+    },
+    {
       "last_name": "Parker",
       "first_name": "Nickolas",
       "full_name": "PARKER,NICKOLAS BRIAN",
@@ -71174,24 +71136,6 @@
       "score": 60,
       "flags": [
         "5+ YR SENTENCE",
-        "RELEASING <1YR"
-      ]
-    },
-    {
-      "last_name": "Gomez",
-      "first_name": "Joe",
-      "full_name": "GOMEZ,JOE ANTHONY",
-      "tdcj_num": "2585186",
-      "sid_num": "6950566",
-      "facility": "Briscoe",
-      "offense": "FAIL COMP SEX OFF DUTY REG LIFE",
-      "sentence_date": "10/7/2025",
-      "projected_release": "8/4/2027",
-      "sentence_years": "2",
-      "score": 60,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
         "RELEASING <1YR"
       ]
     },
@@ -74581,24 +74525,6 @@
       ]
     },
     {
-      "last_name": "Garibay",
-      "first_name": "Mark",
-      "full_name": "GARIBAY,MARK ANTHONY",
-      "tdcj_num": "2584957",
-      "sid_num": "7827357",
-      "facility": "Garza West",
-      "offense": "EVADING ARR DET W/VEH",
-      "sentence_date": "10/7/2025",
-      "projected_release": "7/25/2028",
-      "sentence_years": "8",
-      "score": 60,
-      "flags": [
-        "5+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "RELEASING <2YR"
-      ]
-    },
-    {
       "last_name": "Reyes",
       "first_name": "Gilbert",
       "full_name": "REYES,GILBERT III",
@@ -76835,23 +76761,6 @@
       ]
     },
     {
-      "last_name": "Orosco",
-      "first_name": "Ruben",
-      "full_name": "OROSCO,RUBEN JR",
-      "tdcj_num": "2606804",
-      "sid_num": "8348794",
-      "facility": "Glossbrenner",
-      "offense": "DRIVING WHILE INTOXICATED 3RD OR",
-      "sentence_date": "",
-      "projected_release": "10/9/2026",
-      "sentence_years": "5",
-      "score": 60,
-      "flags": [
-        "5+ YR SENTENCE",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Reel",
       "first_name": "Eric",
       "full_name": "REEL,ERIC NATHANIEL",
@@ -77233,24 +77142,6 @@
       "score": 60,
       "flags": [
         "LIFE/LONG SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Dunn",
-      "first_name": "Heidi",
-      "full_name": "DUNN,HEIDI JEAN",
-      "tdcj_num": "2612638",
-      "sid_num": "8438595",
-      "facility": "Henley",
-      "offense": "THEFT PROP <$100 W/PREV CONVIC E",
-      "sentence_date": "",
-      "projected_release": "10/9/2026",
-      "sentence_years": "4",
-      "score": 60,
-      "flags": [
-        "2+ YR SENTENCE",
-        "FINANCIAL OFFENSE",
-        "RELEASING <1YR"
       ]
     },
     {
@@ -78608,23 +78499,6 @@
       "flags": [
         "5+ YR SENTENCE",
         "RELEASING <1YR"
-      ]
-    },
-    {
-      "last_name": "Gibson",
-      "first_name": "Austin",
-      "full_name": "GIBSON,AUSTIN ZACKERY",
-      "tdcj_num": "2584959",
-      "sid_num": "8849744",
-      "facility": "Lopez",
-      "offense": "AGG ASLT W/DWPN",
-      "sentence_date": "10/7/2025",
-      "projected_release": "10/3/2033",
-      "sentence_years": "10",
-      "score": 60,
-      "flags": [
-        "10+ YR SENTENCE",
-        "SENTENCED <1YR"
       ]
     },
     {
@@ -82089,6 +81963,24 @@
       ]
     },
     {
+      "last_name": "Colunga",
+      "first_name": "Diamond",
+      "full_name": "COLUNGA,DIAMOND JEN",
+      "tdcj_num": "2613782",
+      "sid_num": "17873802",
+      "facility": "Plane",
+      "offense": "DWI 3RD MO",
+      "sentence_date": "4/10/2026",
+      "projected_release": "6/10/2027",
+      "sentence_years": "3",
+      "score": 60,
+      "flags": [
+        "2+ YR SENTENCE",
+        "SENTENCED <1YR",
+        "RELEASING <1YR"
+      ]
+    },
+    {
       "last_name": "Quintero",
       "first_name": "Manuel",
       "full_name": "QUINTERO,MANUEL",
@@ -82626,24 +82518,6 @@
       "score": 60,
       "flags": [
         "LIFE/LONG SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Demoss",
-      "first_name": "Malachai",
-      "full_name": "DEMOSS,MALACHAI ISAIAH",
-      "tdcj_num": "2588249",
-      "sid_num": "18379978",
-      "facility": "Connally",
-      "offense": "INJ CHILD/ELD/DIS W/INT BI",
-      "sentence_date": "10/23/2025",
-      "projected_release": "10/9/2026",
-      "sentence_years": "3",
-      "score": 60,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "RELEASING <1YR"
       ]
     },
     {
@@ -84670,6 +84544,23 @@
       "flags": [
         "5+ YR SENTENCE",
         "RELEASING <1YR"
+      ]
+    },
+    {
+      "last_name": "Tello",
+      "first_name": "Rolando",
+      "full_name": "TELLO,ROLANDO JR",
+      "tdcj_num": "2614180",
+      "sid_num": "20242272",
+      "facility": "Garza West",
+      "offense": "AGG ASLT W/DEADLY WPN",
+      "sentence_date": "4/10/2026",
+      "projected_release": "9/29/2035",
+      "sentence_years": "10",
+      "score": 60,
+      "flags": [
+        "10+ YR SENTENCE",
+        "SENTENCED <1YR"
       ]
     },
     {
@@ -87051,6 +86942,23 @@
       ]
     },
     {
+      "last_name": "Burks",
+      "first_name": "Larry",
+      "full_name": "BURKS,LARRY KETUS",
+      "tdcj_num": "2585180",
+      "sid_num": "50285745",
+      "facility": "Stevenson",
+      "offense": "CRIMINAL MISCHIEF $30-$150K",
+      "sentence_date": "10/7/2025",
+      "projected_release": "6/25/2027",
+      "sentence_years": "8",
+      "score": 60,
+      "flags": [
+        "5+ YR SENTENCE",
+        "RELEASING <1YR"
+      ]
+    },
+    {
       "last_name": "Alaniz",
       "first_name": "Damian",
       "full_name": "ALANIZ,DAMIAN CAIN",
@@ -88281,24 +88189,6 @@
       "score": 60,
       "flags": [
         "LIFE/LONG SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Vega",
-      "first_name": "Zenario",
-      "full_name": "VEGA,ZENARIO HERNANDEZ",
-      "tdcj_num": "2585209",
-      "sid_num": "50612590",
-      "facility": "Segovia",
-      "offense": "DWI 3RD/MORE",
-      "sentence_date": "10/7/2025",
-      "projected_release": "5/27/2027",
-      "sentence_years": "2",
-      "score": 60,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "RELEASING <1YR"
       ]
     },
     {
@@ -89779,7 +89669,8 @@
       "score": 58,
       "flags": [
         "5+ YR SENTENCE",
-        "DRUG OFFENSE"
+        "DRUG OFFENSE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -90160,25 +90051,6 @@
       "flags": [
         "5+ YR SENTENCE",
         "DRUG OFFENSE",
-        "PAST RELEASE DATE"
-      ]
-    },
-    {
-      "last_name": "Alvarez",
-      "first_name": "Alberto",
-      "full_name": "ALVAREZ,ALBERTO CASTANEDA",
-      "tdcj_num": "2584945",
-      "sid_num": "5456104",
-      "facility": "Dominguez",
-      "offense": "UNL POSS FIREARM BY FELON",
-      "sentence_date": "10/7/2025",
-      "projected_release": "6/1/2026",
-      "sentence_years": "3",
-      "score": 58,
-      "flags": [
-        "2+ YR SENTENCE",
-        "DRUG OFFENSE",
-        "SENTENCED <1YR",
         "PAST RELEASE DATE"
       ]
     },
@@ -91810,7 +91682,8 @@
       "score": 58,
       "flags": [
         "5+ YR SENTENCE",
-        "DRUG OFFENSE"
+        "DRUG OFFENSE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -92152,6 +92025,24 @@
       ]
     },
     {
+      "last_name": "Rodriguez",
+      "first_name": "Bernardo",
+      "full_name": "RODRIGUEZ,BERNARDO III",
+      "tdcj_num": "2584974",
+      "sid_num": "7008758",
+      "facility": "Stevenson",
+      "offense": "UNL POSS METAL/BODY ARMOR BY FEL",
+      "sentence_date": "10/7/2025",
+      "projected_release": "8/28/2028",
+      "sentence_years": "3",
+      "score": 58,
+      "flags": [
+        "2+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "RELEASING <2YR"
+      ]
+    },
+    {
       "last_name": "Juarez",
       "first_name": "Richard",
       "full_name": "JUAREZ,RICHARD",
@@ -92250,23 +92141,6 @@
       "offense": "POSS CHILD PORN",
       "sentence_date": "9/6/2023",
       "projected_release": "11/9/2030",
-      "sentence_years": "8",
-      "score": 58,
-      "flags": [
-        "5+ YR SENTENCE",
-        "DRUG OFFENSE"
-      ]
-    },
-    {
-      "last_name": "Thatcher",
-      "first_name": "Ricky",
-      "full_name": "THATCHER,RICKY",
-      "tdcj_num": "2574661",
-      "sid_num": "7106629",
-      "facility": "McConnell",
-      "offense": "FELON POSS FIREARM",
-      "sentence_date": "7/21/2025",
-      "projected_release": "10/8/2028",
       "sentence_years": "8",
       "score": 58,
       "flags": [
@@ -93374,7 +93248,8 @@
       "flags": [
         "2+ YR SENTENCE",
         "DRUG OFFENSE",
-        "SENTENCED <1YR"
+        "SENTENCED <1YR",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -95900,23 +95775,6 @@
       ]
     },
     {
-      "last_name": "Garza",
-      "first_name": "A",
-      "full_name": "GARZA,A P",
-      "tdcj_num": "2583967",
-      "sid_num": "3602603",
-      "facility": "Dominguez",
-      "offense": "ASLT FAM/HSE MEM PREV CONV",
-      "sentence_date": "10/7/2025",
-      "projected_release": "11/20/2029",
-      "sentence_years": "5",
-      "score": 55,
-      "flags": [
-        "5+ YR SENTENCE",
-        "SENTENCED <1YR"
-      ]
-    },
-    {
       "last_name": "Lawhorne",
       "first_name": "Allen",
       "full_name": "LAWHORNE,ALLEN",
@@ -97065,24 +96923,6 @@
       "flags": [
         "10+ YR SENTENCE",
         "PAST RELEASE DATE"
-      ]
-    },
-    {
-      "last_name": "Segovia",
-      "first_name": "Henry",
-      "full_name": "SEGOVIA,HENRY",
-      "tdcj_num": "2586954",
-      "sid_num": "4443018",
-      "facility": "Lopez",
-      "offense": "OBSTRUCTION/RETALIATION",
-      "sentence_date": "10/23/2025",
-      "projected_release": "10/9/2027",
-      "sentence_years": "2",
-      "score": 55,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "RELEASING <2YR"
       ]
     },
     {
@@ -103939,6 +103779,23 @@
       ]
     },
     {
+      "last_name": "Gomez",
+      "first_name": "Joe",
+      "full_name": "GOMEZ,JOE ANTHONY",
+      "tdcj_num": "2585186",
+      "sid_num": "6950566",
+      "facility": "Briscoe",
+      "offense": "FAIL COMP SEX OFF DUTY REG LIFE",
+      "sentence_date": "10/7/2025",
+      "projected_release": "8/4/2027",
+      "sentence_years": "2",
+      "score": 55,
+      "flags": [
+        "2+ YR SENTENCE",
+        "RELEASING <1YR"
+      ]
+    },
+    {
       "last_name": "Espino",
       "first_name": "Melissa",
       "full_name": "ESPINO,MELISSA LYNN",
@@ -104523,23 +104380,6 @@
       ]
     },
     {
-      "last_name": "Arzola",
-      "first_name": "Eleanor",
-      "full_name": "ARZOLA,ELEANOR",
-      "tdcj_num": "2574180",
-      "sid_num": "7075257",
-      "facility": "Plane",
-      "offense": "BURG HAB",
-      "sentence_date": "8/22/2017",
-      "projected_release": "10/9/2026",
-      "sentence_years": "4",
-      "score": 55,
-      "flags": [
-        "2+ YR SENTENCE",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Lopez",
       "first_name": "Henry",
       "full_name": "LOPEZ,HENRY L",
@@ -105048,23 +104888,6 @@
       "score": 55,
       "flags": [
         "10+ YR SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Hernandez",
-      "first_name": "Phillip",
-      "full_name": "HERNANDEZ,PHILLIP T",
-      "tdcj_num": "2550877",
-      "sid_num": "7197243",
-      "facility": "Memorial",
-      "offense": "AGG ASLT W/DWPN",
-      "sentence_date": "3/12/2025",
-      "projected_release": "10/9/2026",
-      "sentence_years": "3",
-      "score": 55,
-      "flags": [
-        "2+ YR SENTENCE",
-        "RELEASING <1YR"
       ]
     },
     {
@@ -107337,6 +107160,23 @@
       "flags": [
         "5+ YR SENTENCE",
         "SENTENCED <1YR"
+      ]
+    },
+    {
+      "last_name": "Garibay",
+      "first_name": "Mark",
+      "full_name": "GARIBAY,MARK ANTHONY",
+      "tdcj_num": "2584957",
+      "sid_num": "7827357",
+      "facility": "Garza West",
+      "offense": "EVADING ARR DET W/VEH",
+      "sentence_date": "10/7/2025",
+      "projected_release": "7/25/2028",
+      "sentence_years": "8",
+      "score": 55,
+      "flags": [
+        "5+ YR SENTENCE",
+        "RELEASING <2YR"
       ]
     },
     {
@@ -111277,6 +111117,22 @@
       ]
     },
     {
+      "last_name": "Gibson",
+      "first_name": "Austin",
+      "full_name": "GIBSON,AUSTIN ZACKERY",
+      "tdcj_num": "2584959",
+      "sid_num": "8849744",
+      "facility": "Lopez",
+      "offense": "AGG ASLT W/DWPN",
+      "sentence_date": "10/7/2025",
+      "projected_release": "10/3/2033",
+      "sentence_years": "10",
+      "score": 55,
+      "flags": [
+        "10+ YR SENTENCE"
+      ]
+    },
+    {
       "last_name": "Villarreal",
       "first_name": "Matthew",
       "full_name": "VILLARREAL,MATTHEW JAMES",
@@ -111623,6 +111479,23 @@
       "score": 55,
       "flags": [
         "10+ YR SENTENCE"
+      ]
+    },
+    {
+      "last_name": "Esquivel",
+      "first_name": "Jesse",
+      "full_name": "ESQUIVEL,JESSE",
+      "tdcj_num": "2473749",
+      "sid_num": "8968933",
+      "facility": "Connally",
+      "offense": "AGG ASLT W/DDLY WPN",
+      "sentence_date": "10/16/2023",
+      "projected_release": "10/8/2028",
+      "sentence_years": "5",
+      "score": 55,
+      "flags": [
+        "5+ YR SENTENCE",
+        "RELEASING <2YR"
       ]
     },
     {
@@ -117306,23 +117179,6 @@
       ]
     },
     {
-      "last_name": "Bauerle",
-      "first_name": "Dane",
-      "full_name": "BAUERLE,DANE MATTHEW",
-      "tdcj_num": "2530271",
-      "sid_num": "20717202",
-      "facility": "Garza West",
-      "offense": "INDECENCY W/CHILD SEX CONTACT",
-      "sentence_date": "10/10/2024",
-      "projected_release": "10/9/2026",
-      "sentence_years": "2",
-      "score": 55,
-      "flags": [
-        "2+ YR SENTENCE",
-        "RELEASING <1YR"
-      ]
-    },
-    {
       "last_name": "Welch",
       "first_name": "Chaz",
       "full_name": "WELCH,CHAZ EDWARD",
@@ -118159,23 +118015,6 @@
       "score": 55,
       "flags": [
         "10+ YR SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Trevino",
-      "first_name": "Troy",
-      "full_name": "TREVINO,TROY XAVIER",
-      "tdcj_num": "2585207",
-      "sid_num": "21531292",
-      "facility": "Torres",
-      "offense": "AGG ASLT W/DWPN",
-      "sentence_date": "10/7/2025",
-      "projected_release": "3/15/2033",
-      "sentence_years": "8",
-      "score": 55,
-      "flags": [
-        "5+ YR SENTENCE",
-        "SENTENCED <1YR"
       ]
     },
     {
@@ -120259,6 +120098,23 @@
       ]
     },
     {
+      "last_name": "Vega",
+      "first_name": "Zenario",
+      "full_name": "VEGA,ZENARIO HERNANDEZ",
+      "tdcj_num": "2585209",
+      "sid_num": "50612590",
+      "facility": "Segovia",
+      "offense": "DWI 3RD/MORE",
+      "sentence_date": "10/7/2025",
+      "projected_release": "5/27/2027",
+      "sentence_years": "2",
+      "score": 55,
+      "flags": [
+        "2+ YR SENTENCE",
+        "RELEASING <1YR"
+      ]
+    },
+    {
       "last_name": "Spangrud",
       "first_name": "Bryan",
       "full_name": "SPANGRUD,BRYAN ALEXANDER",
@@ -121371,6 +121227,24 @@
       "offense": "POSS CS PG1/1-B 4-200G",
       "sentence_date": "6/27/2025",
       "projected_release": "7/16/2026",
+      "sentence_years": "3",
+      "score": 53,
+      "flags": [
+        "2+ YR SENTENCE",
+        "DRUG OFFENSE",
+        "PAST RELEASE DATE"
+      ]
+    },
+    {
+      "last_name": "Alvarez",
+      "first_name": "Alberto",
+      "full_name": "ALVAREZ,ALBERTO CASTANEDA",
+      "tdcj_num": "2584945",
+      "sid_num": "5456104",
+      "facility": "Dominguez",
+      "offense": "UNL POSS FIREARM BY FELON",
+      "sentence_date": "10/7/2025",
+      "projected_release": "6/1/2026",
       "sentence_years": "3",
       "score": 53,
       "flags": [
@@ -124317,6 +124191,22 @@
       ]
     },
     {
+      "last_name": "Garza",
+      "first_name": "A",
+      "full_name": "GARZA,A P",
+      "tdcj_num": "2583967",
+      "sid_num": "3602603",
+      "facility": "Dominguez",
+      "offense": "ASLT FAM/HSE MEM PREV CONV",
+      "sentence_date": "10/7/2025",
+      "projected_release": "11/20/2029",
+      "sentence_years": "5",
+      "score": 50,
+      "flags": [
+        "5+ YR SENTENCE"
+      ]
+    },
+    {
       "last_name": "Schaefer",
       "first_name": "Maria",
       "full_name": "SCHAEFER,MARIA ANN",
@@ -125128,7 +125018,8 @@
       "sentence_years": "5",
       "score": 50,
       "flags": [
-        "5+ YR SENTENCE"
+        "5+ YR SENTENCE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -130602,23 +130493,6 @@
       ]
     },
     {
-      "last_name": "Barron",
-      "first_name": "Royree",
-      "full_name": "BARRON,ROYREE DEMETRIOUS JR",
-      "tdcj_num": "2584946",
-      "sid_num": "7375065",
-      "facility": "Garza West",
-      "offense": "SEXUAL ASLT",
-      "sentence_date": "10/7/2025",
-      "projected_release": "5/29/2029",
-      "sentence_years": "4",
-      "score": 50,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR"
-      ]
-    },
-    {
       "last_name": "Moreno",
       "first_name": "Crystal",
       "full_name": "MORENO,CRYSTAL MARIE",
@@ -133220,6 +133094,22 @@
       ]
     },
     {
+      "last_name": "Orosco",
+      "first_name": "Ruben",
+      "full_name": "OROSCO,RUBEN JR",
+      "tdcj_num": "2606804",
+      "sid_num": "8348794",
+      "facility": "Glossbrenner",
+      "offense": "DRIVING WHILE INTOXICATED 3RD OR",
+      "sentence_date": "",
+      "projected_release": "10/9/2026",
+      "sentence_years": "5",
+      "score": 50,
+      "flags": [
+        "5+ YR SENTENCE"
+      ]
+    },
+    {
       "last_name": "Bustos",
       "first_name": "Jason",
       "full_name": "BUSTOS,JASON GIOVANNI",
@@ -133454,6 +133344,23 @@
       "flags": [
         "5+ YR SENTENCE",
         "PAST RELEASE DATE"
+      ]
+    },
+    {
+      "last_name": "Dunn",
+      "first_name": "Heidi",
+      "full_name": "DUNN,HEIDI JEAN",
+      "tdcj_num": "2612638",
+      "sid_num": "8438595",
+      "facility": "Henley",
+      "offense": "THEFT PROP <$100 W/PREV CONVIC E",
+      "sentence_date": "",
+      "projected_release": "10/9/2026",
+      "sentence_years": "4",
+      "score": 50,
+      "flags": [
+        "2+ YR SENTENCE",
+        "FINANCIAL OFFENSE"
       ]
     },
     {
@@ -134569,22 +134476,6 @@
       "flags": [
         "2+ YR SENTENCE",
         "RELEASING <2YR"
-      ]
-    },
-    {
-      "last_name": "Esquivel",
-      "first_name": "Jesse",
-      "full_name": "ESQUIVEL,JESSE",
-      "tdcj_num": "2473749",
-      "sid_num": "8968933",
-      "facility": "Connally",
-      "offense": "AGG ASLT W/DDLY WPN",
-      "sentence_date": "10/16/2023",
-      "projected_release": "10/8/2028",
-      "sentence_years": "5",
-      "score": 50,
-      "flags": [
-        "5+ YR SENTENCE"
       ]
     },
     {
@@ -136479,6 +136370,23 @@
       ]
     },
     {
+      "last_name": "Demoss",
+      "first_name": "Malachai",
+      "full_name": "DEMOSS,MALACHAI ISAIAH",
+      "tdcj_num": "2588249",
+      "sid_num": "18379978",
+      "facility": "Connally",
+      "offense": "INJ CHILD/ELD/DIS W/INT BI",
+      "sentence_date": "10/23/2025",
+      "projected_release": "10/9/2026",
+      "sentence_years": "3",
+      "score": 50,
+      "flags": [
+        "2+ YR SENTENCE",
+        "SENTENCED <1YR"
+      ]
+    },
+    {
       "last_name": "Avilez",
       "first_name": "Mike",
       "full_name": "AVILEZ,MIKE J",
@@ -136871,24 +136779,6 @@
       "score": 50,
       "flags": [
         "5+ YR SENTENCE"
-      ]
-    },
-    {
-      "last_name": "Moreno",
-      "first_name": "Krystle",
-      "full_name": "MORENO,KRYSTLE ANN",
-      "tdcj_num": "2581939",
-      "sid_num": "19067987",
-      "facility": "Hilltop",
-      "offense": "HARASSMENT OF PUBLIC SERV",
-      "sentence_date": "10/7/2025",
-      "projected_release": "6/1/2026",
-      "sentence_years": "2",
-      "score": 50,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "PAST RELEASE DATE"
       ]
     },
     {
@@ -138779,24 +138669,6 @@
       ]
     },
     {
-      "last_name": "Urquizo",
-      "first_name": "Jose",
-      "full_name": "URQUIZO,JOSE",
-      "tdcj_num": "2585208",
-      "sid_num": "21274288",
-      "facility": "Segovia",
-      "offense": "AGG ASLT W/DWPN",
-      "sentence_date": "10/7/2025",
-      "projected_release": "9/24/2026",
-      "sentence_years": "2",
-      "score": 50,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR",
-        "PAST RELEASE DATE"
-      ]
-    },
-    {
       "last_name": "Posadas",
       "first_name": "Matilde",
       "full_name": "POSADAS,MATILDE",
@@ -138890,6 +138762,22 @@
       "offense": "INDEC W/CHILD SEXUAL CONTACT",
       "sentence_date": "8/11/2025",
       "projected_release": "12/30/2032",
+      "sentence_years": "8",
+      "score": 50,
+      "flags": [
+        "5+ YR SENTENCE"
+      ]
+    },
+    {
+      "last_name": "Trevino",
+      "first_name": "Troy",
+      "full_name": "TREVINO,TROY XAVIER",
+      "tdcj_num": "2585207",
+      "sid_num": "21531292",
+      "facility": "Torres",
+      "offense": "AGG ASLT W/DWPN",
+      "sentence_date": "10/7/2025",
+      "projected_release": "3/15/2033",
       "sentence_years": "8",
       "score": 50,
       "flags": [
@@ -140140,7 +140028,8 @@
       "sentence_years": "6",
       "score": 50,
       "flags": [
-        "5+ YR SENTENCE"
+        "5+ YR SENTENCE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -140371,23 +140260,6 @@
       ]
     },
     {
-      "last_name": "Chase",
-      "first_name": "Dontavia",
-      "full_name": "CHASE,DONTAVIA MONIQUE",
-      "tdcj_num": "2584445",
-      "sid_num": "50680191",
-      "facility": "Murray",
-      "offense": "AGG ASLT W/DWPN",
-      "sentence_date": "10/7/2025",
-      "projected_release": "1/23/2029",
-      "sentence_years": "4",
-      "score": 50,
-      "flags": [
-        "2+ YR SENTENCE",
-        "SENTENCED <1YR"
-      ]
-    },
-    {
       "last_name": "Bernal",
       "first_name": "Angelo",
       "full_name": "BERNAL,ANGELO",
@@ -140615,7 +140487,8 @@
       "sentence_years": "5",
       "score": 50,
       "flags": [
-        "5+ YR SENTENCE"
+        "5+ YR SENTENCE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -142207,6 +142080,22 @@
       ]
     },
     {
+      "last_name": "Arzola",
+      "first_name": "Eleanor",
+      "full_name": "ARZOLA,ELEANOR",
+      "tdcj_num": "2574180",
+      "sid_num": "7075257",
+      "facility": "Plane",
+      "offense": "BURG HAB",
+      "sentence_date": "8/22/2017",
+      "projected_release": "10/9/2026",
+      "sentence_years": "4",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE"
+      ]
+    },
+    {
       "last_name": "Zacarias",
       "first_name": "Tony",
       "full_name": "ZACARIAS,TONY ANTHONY",
@@ -142251,6 +142140,22 @@
       "sentence_date": "8/8/2025",
       "projected_release": "1/18/2029",
       "sentence_years": "4",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE"
+      ]
+    },
+    {
+      "last_name": "Hernandez",
+      "first_name": "Phillip",
+      "full_name": "HERNANDEZ,PHILLIP T",
+      "tdcj_num": "2550877",
+      "sid_num": "7197243",
+      "facility": "Memorial",
+      "offense": "AGG ASLT W/DWPN",
+      "sentence_date": "3/12/2025",
+      "projected_release": "10/9/2026",
+      "sentence_years": "3",
       "score": 45,
       "flags": [
         "2+ YR SENTENCE"
@@ -142384,6 +142289,22 @@
       "offense": "ASLT FAM/HSE MEM PREV CONV",
       "sentence_date": "7/24/2025",
       "projected_release": "3/7/2029",
+      "sentence_years": "4",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE"
+      ]
+    },
+    {
+      "last_name": "Barron",
+      "first_name": "Royree",
+      "full_name": "BARRON,ROYREE DEMETRIOUS JR",
+      "tdcj_num": "2584946",
+      "sid_num": "7375065",
+      "facility": "Garza West",
+      "offense": "SEXUAL ASLT",
+      "sentence_date": "10/7/2025",
+      "projected_release": "5/29/2029",
       "sentence_years": "4",
       "score": 45,
       "flags": [
@@ -144045,6 +143966,23 @@
       ]
     },
     {
+      "last_name": "Moreno",
+      "first_name": "Krystle",
+      "full_name": "MORENO,KRYSTLE ANN",
+      "tdcj_num": "2581939",
+      "sid_num": "19067987",
+      "facility": "Hilltop",
+      "offense": "HARASSMENT OF PUBLIC SERV",
+      "sentence_date": "10/7/2025",
+      "projected_release": "6/1/2026",
+      "sentence_years": "2",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE",
+        "PAST RELEASE DATE"
+      ]
+    },
+    {
       "last_name": "Dunkley",
       "first_name": "Sharttarius",
       "full_name": "DUNKLEY,SHARTTARIUS ANTWOND",
@@ -144383,6 +144321,22 @@
       ]
     },
     {
+      "last_name": "Bauerle",
+      "first_name": "Dane",
+      "full_name": "BAUERLE,DANE MATTHEW",
+      "tdcj_num": "2530271",
+      "sid_num": "20717202",
+      "facility": "Garza West",
+      "offense": "INDECENCY W/CHILD SEX CONTACT",
+      "sentence_date": "10/10/2024",
+      "projected_release": "10/9/2026",
+      "sentence_years": "2",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE"
+      ]
+    },
+    {
       "last_name": "Rodriguez",
       "first_name": "Daniel",
       "full_name": "RODRIGUEZ,DANIEL",
@@ -144426,6 +144380,23 @@
       "offense": "SEXUAL ASLT",
       "sentence_date": "8/28/2025",
       "projected_release": "8/19/2026",
+      "sentence_years": "2",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE",
+        "PAST RELEASE DATE"
+      ]
+    },
+    {
+      "last_name": "Urquizo",
+      "first_name": "Jose",
+      "full_name": "URQUIZO,JOSE",
+      "tdcj_num": "2585208",
+      "sid_num": "21274288",
+      "facility": "Segovia",
+      "offense": "AGG ASLT W/DWPN",
+      "sentence_date": "10/7/2025",
+      "projected_release": "9/24/2026",
       "sentence_years": "2",
       "score": 45,
       "flags": [
@@ -144496,7 +144467,8 @@
       "sentence_years": "3",
       "score": 45,
       "flags": [
-        "2+ YR SENTENCE"
+        "2+ YR SENTENCE",
+        "PAST RELEASE DATE"
       ]
     },
     {
@@ -145052,6 +145024,22 @@
       "flags": [
         "2+ YR SENTENCE",
         "PAST RELEASE DATE"
+      ]
+    },
+    {
+      "last_name": "Chase",
+      "first_name": "Dontavia",
+      "full_name": "CHASE,DONTAVIA MONIQUE",
+      "tdcj_num": "2584445",
+      "sid_num": "50680191",
+      "facility": "Murray",
+      "offense": "AGG ASLT W/DWPN",
+      "sentence_date": "10/7/2025",
+      "projected_release": "1/23/2029",
+      "sentence_years": "4",
+      "score": 45,
+      "flags": [
+        "2+ YR SENTENCE"
       ]
     },
     {
