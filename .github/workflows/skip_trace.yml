@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       green_light:
-        description: 'Type YES_RUN_SKIP_TRACE to authorize skip tracing'
-        required: true
+        description: 'Type YES_RUN_SKIP_TRACE to authorize skip tracing (leave blank for dry run)'
+        required: false
         default: ''
       dry_run:
         description: 'dry-run: estimate credits only (yes/no)'
         required: false
-        default: 'no'
+        default: 'yes'
       limit:
         description: 'Max leads to trace this run (default: all pending)'
         required: false
