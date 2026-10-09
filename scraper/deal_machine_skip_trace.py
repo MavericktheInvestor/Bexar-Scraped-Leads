@@ -94,7 +94,6 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
         "dm", "enrich", "address", full_addr,
         "--contact-audience", "owners",
         "--fields", "phones",
-        "--scrub-dnc",
         "--json",
         "--yes",
     ]
