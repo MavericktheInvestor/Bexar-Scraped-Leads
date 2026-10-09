@@ -292,6 +292,7 @@ def main():
         try:
             # Try mailing address first (owner's address = tighter match)
             mail_addr = get(r, "mail_address", "Mailing Address")
+            prop_addr = get(r, "prop_address", "Property Address")
             phones, credits = [], 0
 
             if mail_addr:
