@@ -58,8 +58,5 @@ jobs:
           git config user.name "Claude"
           git config user.email "noreply@anthropic.com"
           git add data/skip_trace_queue.csv || true
-          git diff --cached --quiet || git commit -m "skip-trace-queue: $(date -u +%Y-%m-%d)
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_015rL9cgZLZpq1VJrdoU7ka8"
+          git diff --cached --quiet || git commit -m "skip-trace-queue: $(date -u +%Y-%m-%d)"
           git push origin main || (git pull --rebase origin main && git push origin main)
