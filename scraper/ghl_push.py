@@ -196,23 +196,33 @@ def build_contact(r):
 
     body = {
         "locationId": GHL_LOCATION_ID,
-        "firstName":  r.get("first", ""),
-        "lastName":   r.get("last", ""),
+        "firstName":  r.get("first", "") or r.get("First Name", ""),
+        "lastName":   r.get("last", "")  or r.get("Last Name", ""),
         "tags":       tags,
         "source":     "Bexar County Scraper",
     }
 
-    # Address
-    if r.get("mail_address"):
-        body["address1"] = r["mail_address"]
-        body["city"]     = r.get("mail_city", "")
-        body["state"]    = r.get("mail_state", "TX")
-        body["postalCode"] = r.get("mail_zip", "")
-    elif r.get("prop_address"):
-        body["address1"] = r["prop_address"]
-        body["city"]     = r.get("prop_city", "San Antonio")
-        body["state"]    = r.get("prop_state", "TX")
-        body["postalCode"] = r.get("prop_zip", "")
+    # Phone numbers (populated after skip trace)
+    phone1 = r.get("phone1", "") or r.get("Phone 1", "")
+    phone2 = r.get("phone2", "") or r.get("Phone 2", "")
+    if phone1:
+        body["phone"] = phone1
+    if phone2:
+        body["phone2"] = phone2
+
+    # Address — handle both snake_case (old queue) and Title Case (skip_traced.csv)
+    mail_addr = r.get("mail_address") or r.get("Mailing Address", "")
+    prop_addr = r.get("prop_address") or r.get("Property Address", "")
+    if mail_addr:
+        body["address1"]   = mail_addr
+        body["city"]       = r.get("mail_city") or r.get("Mailing City", "")
+        body["state"]      = r.get("mail_state") or r.get("Mailing State", "TX")
+        body["postalCode"] = r.get("mail_zip")   or r.get("Mailing Zip", "")
+    elif prop_addr:
+        body["address1"]   = prop_addr
+        body["city"]       = r.get("prop_city") or r.get("Property City", "San Antonio")
+        body["state"]      = r.get("prop_state") or r.get("Property State", "TX")
+        body["postalCode"] = r.get("prop_zip")   or r.get("Property Zip", "")
 
     if custom_fields:
         body["customFields"] = custom_fields
@@ -348,11 +358,14 @@ def main():
         print("   Run with --discover first to get pipeline/stage IDs")
         sys.exit(1)
 
-    # Load queue
-    queue_path = DATA_DIR / "skip_trace_queue.csv"
+    # Load queue — prefer skip_traced.csv (has phones) if it exists
+    queue_path = DATA_DIR / "skip_traced.csv"
     if not queue_path.exists():
-        print(f"\n⚠  {queue_path} not found — run skip_trace_queue.py first")
+        queue_path = DATA_DIR / "skip_trace_queue.csv"
+    if not queue_path.exists():
+        print(f"\n⚠  No queue CSV found — run skip_trace_queue.py first")
         sys.exit(1)
+    print(f"\n📂 Source: {queue_path.name}")
 
     leads = []
     with open(queue_path, newline="", encoding="utf-8-sig") as f:

@@ -1,0 +1,72 @@
+name: Skip Trace Leads (Deal Machine)
+
+# ⚠️  GATED — will NOT run skip trace unless you explicitly type
+#     YES_RUN_SKIP_TRACE in the green_light input below.
+#     This protects against accidentally consuming skip-trace credits.
+
+on:
+  workflow_dispatch:
+    inputs:
+      green_light:
+        description: 'Type YES_RUN_SKIP_TRACE to authorize skip tracing'
+        required: true
+        default: ''
+      dry_run:
+        description: 'dry-run: estimate credits only (yes/no)'
+        required: false
+        default: 'no'
+      limit:
+        description: 'Max leads to trace this run (default: all pending)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "skip-trace"
+  cancel-in-progress: false
+
+jobs:
+  skip-trace:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Dry run — estimate credits only
+        if: ${{ github.event.inputs.dry_run == 'yes' }}
+        run: python scraper/deal_machine_skip_trace.py --dry-run
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Run skip trace (green-light required)
+        if: ${{ github.event.inputs.dry_run != 'yes' }}
+        run: python scraper/deal_machine_skip_trace.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          DM_API_KEY: ${{ secrets.DM_API_KEY }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SKIP_TRACE_GREEN_LIGHT: ${{ github.event.inputs.green_light }}
+
+      - name: Commit enriched CSV
+        if: ${{ github.event.inputs.dry_run != 'yes' && github.event.inputs.green_light == 'YES_RUN_SKIP_TRACE' }}
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add data/skip_traced.csv || true
+          git diff --cached --quiet || git commit -m "skip-trace: $(date -u +%Y-%m-%d)"
+          git push origin main || (git pull --rebase origin main && git push origin main)
