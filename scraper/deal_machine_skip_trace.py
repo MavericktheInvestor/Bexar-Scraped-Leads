@@ -154,35 +154,39 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
     except json.JSONDecodeError:
         raise RuntimeError(f"dm enrich bad JSON: {result.stdout[:300]}")
 
-    # Debug: print first response to learn the actual shape
+    # Debug: summarize response
     import sys
-    print(f"  [DEBUG] dm enrich JSON type={type(data).__name__} preview={str(data)[:300]}", file=sys.stderr)
+    matched = data.get("matched", False) if isinstance(data, dict) else False
+    people  = (data.get("totals") or {}).get("people", 0) if isinstance(data, dict) else 0
+    print(f"  [DEBUG] dm enrich JSON type={type(data).__name__} matched={matched} people={people} preview={str(data)[:200]}", file=sys.stderr)
 
-    # CLI returns: {data: [...contacts...], totals: {...}}
-    # OR: {data: {contacts: [...]}, credits: {used: N}}
+    # CLI returns: {matched: bool, data: [{..., people: [{phones:[...]}, ...]}], totals: {...}}
+    all_phones = []
+    credits_used = 0
+
     if isinstance(data, list):
-        contacts = data
-        credits_used = 0
+        address_results = data
     elif isinstance(data, dict):
-        raw = data.get("data", [])
-        if isinstance(raw, list):
-            # data.data is the contacts list directly
-            contacts = raw
-        elif isinstance(raw, dict):
-            contacts = raw.get("contacts", [])
-        else:
-            contacts = []
         credits_used = (data.get("credits") or {}).get("used", 0)
         if not credits_used:
             credits_used = (data.get("totals") or {}).get("submitted", 0)
+        raw = data.get("data", [])
+        address_results = raw if isinstance(raw, list) else []
     else:
-        contacts = []
-        credits_used = 0
+        address_results = []
 
-    all_phones = []
-    for c in contacts:
-        if isinstance(c, dict):
-            all_phones.extend(c.get("phones", []))
+    for addr_result in address_results:
+        if not isinstance(addr_result, dict):
+            continue
+        # phones may be in: addr_result.people[].phones  OR  addr_result.contacts[].phones  OR  addr_result.phones
+        for person in addr_result.get("people", []):
+            if isinstance(person, dict):
+                all_phones.extend(person.get("phones", []))
+        for contact in addr_result.get("contacts", []):
+            if isinstance(contact, dict):
+                all_phones.extend(contact.get("phones", []))
+        # flat phones list on the address result itself
+        all_phones.extend(addr_result.get("phones", []))
 
     return all_phones, credits_used
 
