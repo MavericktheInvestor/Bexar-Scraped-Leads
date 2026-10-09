@@ -88,42 +88,57 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
     Use `dm enrich address` CLI to get owner phones.
     Returns (phones_list, credits_used) where phones_list is
     [{number, type, do_not_call}, ...] shaped the same as the API.
+
+    dm enrich address takes ONE positional arg: the full address string.
+    Format: "123 MAIN ST, SAN ANTONIO, TX 78245"
     """
     import subprocess, re
 
-    # Strip zip/state from the address string if already embedded —
-    # the CLI wants them as separate flags, not in the address.
-    # e.g. "12019 LA CUCHILLA, SAN ANTONIO, TEXAS, 78245" → street only
-    street = address.strip()
-    # If no city provided, try to extract city from address
-    if not city and "," in street:
-        parts = [p.strip() for p in street.split(",")]
-        street = parts[0]
-        if len(parts) >= 2:
-            city = parts[1]
-        if len(parts) >= 3 and not state:
-            state = parts[2]
-        if len(parts) >= 4 and not zip_:
-            zip_candidate = parts[3].strip()
-            if re.match(r'^\d{5}', zip_candidate):
-                zip_ = zip_candidate[:5]
+    # Normalize state — CLI needs 2-letter abbreviation
+    STATE_MAP = {
+        "TEXAS": "TX", "CALIFORNIA": "CA", "FLORIDA": "FL",
+        "GEORGIA": "GA", "ARIZONA": "AZ", "NEW YORK": "NY",
+    }
+    if state:
+        state = STATE_MAP.get(state.upper().strip(), state.upper().strip())
+    state = state or "TX"
 
-    # If zip still embedded in street at the end, pull it out
-    zip_match = re.search(r'\b(\d{5})(?:-\d{4})?\s*$', street)
-    if zip_match and not zip_:
-        zip_ = zip_match.group(1)
-        street = street[:zip_match.start()].rstrip(', ')
+    # Parse address — it may already contain city/state/zip embedded
+    # e.g. "12019 LA CUCHILLA, SAN ANTONIO, TEXAS, 78245"
+    # We want: "12019 LA CUCHILLA, SAN ANTONIO, TX 78245"
+    parts = [p.strip() for p in address.split(",")]
+
+    # Extract zip from last part if it looks like one
+    if not zip_ and parts:
+        last = parts[-1]
+        m = re.match(r'^(\d{5})(?:-\d{4})?$', last.strip())
+        if m:
+            zip_ = m.group(1)
+            parts = parts[:-1]
+
+    # Normalize state within parts
+    if parts:
+        last = parts[-1].upper().strip()
+        if last in STATE_MAP or (len(last) == 2 and last.isalpha()):
+            state = STATE_MAP.get(last, last)
+            parts = parts[:-1]
+
+    street = parts[0] if parts else address
+    if not city and len(parts) > 1:
+        city = parts[1]
+    city = city or "San Antonio"
+
+    # Build canonical address string: "STREET, CITY, STATE ZIP"
+    full_addr = f"{street}, {city}, {state}"
+    if zip_:
+        full_addr += f" {zip_}"
 
     cmd = [
-        "dm", "enrich", "address", street,
-        "--city", city or "San Antonio",
-        "--state", state or "TX",
+        "dm", "enrich", "address", full_addr,
         "--contact-audience", "owners",
         "--fields", "phones",
         "--json",
     ]
-    if zip_:
-        cmd += ["--zip", zip_]
 
     env = os.environ.copy()
     env["DM_API_KEY"] = DM_API_KEY
