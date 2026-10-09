@@ -89,22 +89,41 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
     Returns (phones_list, credits_used) where phones_list is
     [{number, type, do_not_call}, ...] shaped the same as the API.
     """
-    import subprocess, tempfile
+    import subprocess, re
 
-    full_addr = address
-    if city:
-        full_addr += f", {city}"
-    if state:
-        full_addr += f", {state}"
-    if zip_:
-        full_addr += f" {zip_}"
+    # Strip zip/state from the address string if already embedded —
+    # the CLI wants them as separate flags, not in the address.
+    # e.g. "12019 LA CUCHILLA, SAN ANTONIO, TEXAS, 78245" → street only
+    street = address.strip()
+    # If no city provided, try to extract city from address
+    if not city and "," in street:
+        parts = [p.strip() for p in street.split(",")]
+        street = parts[0]
+        if len(parts) >= 2:
+            city = parts[1]
+        if len(parts) >= 3 and not state:
+            state = parts[2]
+        if len(parts) >= 4 and not zip_:
+            zip_candidate = parts[3].strip()
+            if re.match(r'^\d{5}', zip_candidate):
+                zip_ = zip_candidate[:5]
+
+    # If zip still embedded in street at the end, pull it out
+    zip_match = re.search(r'\b(\d{5})(?:-\d{4})?\s*$', street)
+    if zip_match and not zip_:
+        zip_ = zip_match.group(1)
+        street = street[:zip_match.start()].rstrip(', ')
 
     cmd = [
-        "dm", "enrich", "address", full_addr,
+        "dm", "enrich", "address", street,
+        "--city", city or "San Antonio",
+        "--state", state or "TX",
         "--contact-audience", "owners",
         "--fields", "phones",
         "--json",
     ]
+    if zip_:
+        cmd += ["--zip", zip_]
 
     env = os.environ.copy()
     env["DM_API_KEY"] = DM_API_KEY
@@ -124,17 +143,23 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
     import sys
     print(f"  [DEBUG] dm enrich JSON type={type(data).__name__} preview={str(data)[:300]}", file=sys.stderr)
 
-    # CLI may return a list directly OR a dict with {data: {contacts: [...]}}
+    # CLI returns: {data: [...contacts...], totals: {...}}
+    # OR: {data: {contacts: [...]}, credits: {used: N}}
     if isinstance(data, list):
-        # List of contact objects directly
         contacts = data
         credits_used = 0
     elif isinstance(data, dict):
-        contacts     = data.get("data", {}).get("contacts", [])
-        if not contacts:
-            # alternate shape: {contacts: [...]}
-            contacts = data.get("contacts", [])
-        credits_used = data.get("credits", {}).get("used", 0)
+        raw = data.get("data", [])
+        if isinstance(raw, list):
+            # data.data is the contacts list directly
+            contacts = raw
+        elif isinstance(raw, dict):
+            contacts = raw.get("contacts", [])
+        else:
+            contacts = []
+        credits_used = (data.get("credits") or {}).get("used", 0)
+        if not credits_used:
+            credits_used = (data.get("totals") or {}).get("submitted", 0)
     else:
         contacts = []
         credits_used = 0
