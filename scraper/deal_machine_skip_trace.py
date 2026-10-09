@@ -71,6 +71,15 @@ def dm_cli_login():
         raise RuntimeError(f"dm login failed: {result.stderr.strip()[:300]}")
     print(f"  ✅ DM CLI logged in: {result.stdout.strip()[:100]}")
 
+    # Print available flags for dm enrich address so we know what's valid
+    help_result = subprocess.run(
+        ["dm", "enrich", "address", "--help"],
+        capture_output=True, text=True, timeout=15
+    )
+    print("=== dm enrich address --help ===")
+    print(help_result.stdout[:2000])
+    print(help_result.stderr[:500])
+
 
 # ── Skip trace logic ───────────────────────────────────────────────────────────
 
@@ -95,7 +104,6 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
         "--contact-audience", "owners",
         "--fields", "phones",
         "--json",
-        "--yes",
     ]
 
     env = os.environ.copy()
