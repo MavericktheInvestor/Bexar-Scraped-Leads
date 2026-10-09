@@ -61,20 +61,15 @@ def install_dm_cli():
 
 
 def dm_cli_login():
-    """Authenticate the CLI with the API key via environment variable."""
+    """Authenticate the CLI with the API key using --key flag."""
     import subprocess
-    # DM CLI reads auth from DEALMACHINE_API_KEY or DM_API_KEY env var
-    # No interactive login needed when env var is set — just verify it works
-    env = os.environ.copy()
-    env["DEALMACHINE_API_KEY"] = DM_API_KEY
-    env["DM_API_KEY"] = DM_API_KEY
     result = subprocess.run(
-        ["dm", "account"],
-        capture_output=True, text=True, env=env, timeout=30
+        ["dm", "login", "--key", DM_API_KEY],
+        capture_output=True, text=True, timeout=30
     )
     if result.returncode != 0:
-        raise RuntimeError(f"dm auth check failed: {result.stderr.strip()[:300]}")
-    print(f"  ✅ DM CLI authenticated: {result.stdout.strip()[:100]}")
+        raise RuntimeError(f"dm login failed: {result.stderr.strip()[:300]}")
+    print(f"  ✅ DM CLI logged in: {result.stdout.strip()[:100]}")
 
 
 # ── Skip trace logic ───────────────────────────────────────────────────────────
