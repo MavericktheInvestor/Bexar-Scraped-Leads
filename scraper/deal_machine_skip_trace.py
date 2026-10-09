@@ -61,17 +61,20 @@ def install_dm_cli():
 
 
 def dm_cli_login():
-    """Authenticate the CLI with the API key."""
+    """Authenticate the CLI with the API key via environment variable."""
     import subprocess
+    # DM CLI reads auth from DEALMACHINE_API_KEY or DM_API_KEY env var
+    # No interactive login needed when env var is set — just verify it works
     env = os.environ.copy()
+    env["DEALMACHINE_API_KEY"] = DM_API_KEY
     env["DM_API_KEY"] = DM_API_KEY
-    # dm login --api-key accepts the key directly
     result = subprocess.run(
-        ["dm", "login", "--api-key", DM_API_KEY],
+        ["dm", "account"],
         capture_output=True, text=True, env=env, timeout=30
     )
     if result.returncode != 0:
-        raise RuntimeError(f"dm login failed: {result.stderr}")
+        raise RuntimeError(f"dm auth check failed: {result.stderr.strip()[:300]}")
+    print(f"  ✅ DM CLI authenticated: {result.stdout.strip()[:100]}")
 
 
 # ── Skip trace logic ───────────────────────────────────────────────────────────
@@ -103,6 +106,7 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
 
     env = os.environ.copy()
     env["DM_API_KEY"] = DM_API_KEY
+    env["DEALMACHINE_API_KEY"] = DM_API_KEY
 
     result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
 
