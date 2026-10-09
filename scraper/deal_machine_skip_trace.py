@@ -158,7 +158,9 @@ def select_best_phones(phones, max_phones=2):
 
 def estimate_credits(leads):
     """Dry-run: count leads needing enrichment, print credit estimate."""
-    need = [r for r in leads if not r.get(PHONE1_KEY, "").strip()]
+    need = [r for r in leads if not r.get(PHONE1_KEY, "").strip()
+            and (r.get("first") or r.get("First Name") or
+                 r.get("last")  or r.get("Last Name"))]
     print(f"\n📊 Dry-run estimate:")
     print(f"   Total in queue:       {len(leads)}")
     print(f"   Already have phones:  {len(leads) - len(need)}")
@@ -263,12 +265,28 @@ def main():
     phone_map = {}  # doc_num -> {phone1, phone2, status}
 
     # Output CSV — copy of queue with phones filled in
+    # Add phone/status columns if not already present
     fieldnames = list(leads[0].keys()) if leads else []
+    for col in [PHONE1_KEY, PHONE2_KEY, STATUS_KEY, DATE_KEY]:
+        if col not in fieldnames:
+            fieldnames.append(col)
+    for r in leads:
+        for col in [PHONE1_KEY, PHONE2_KEY, STATUS_KEY, DATE_KEY]:
+            r.setdefault(col, "")
+
+    def get(r, *keys):
+        """Try multiple key spellings, return first non-empty value."""
+        for k in keys:
+            v = r.get(k, "").strip()
+            if v:
+                return v
+        return ""
 
     print("\n🔍 Enriching leads …")
     for i, r in enumerate(leads, 1):
-        first = r.get("First Name", "").strip()
-        last  = r.get("Last Name", "").strip()
+        # Handle both snake_case (queue CSV) and Title Case (enriched CSV)
+        first = get(r, "first", "First Name")
+        last  = get(r, "last",  "Last Name")
 
         # Skip already traced
         if r.get(PHONE1_KEY, "").strip():
@@ -283,20 +301,24 @@ def main():
             # Try name enrichment first
             phones, credits = enrich_by_name(
                 first, last,
-                address = r.get("Mailing Address") or r.get("Property Address"),
-                city    = r.get("Mailing City") or r.get("Property City"),
-                state   = r.get("Mailing State") or r.get("Property State") or "TX",
-                zip_    = r.get("Mailing Zip") or r.get("Property Zip"),
+                address = get(r, "mail_address", "Mailing Address",
+                                 "prop_address",  "Property Address"),
+                city    = get(r, "mail_city",    "Mailing City",
+                                 "prop_city",     "Property City"),
+                state   = get(r, "mail_state",   "Mailing State",
+                                 "prop_state",    "Property State") or "TX",
+                zip_    = get(r, "mail_zip",     "Mailing Zip",
+                                 "prop_zip",      "Property Zip"),
             )
             total_credits += credits
 
             # Fallback: enrich by property address
-            if not phones and r.get("Property Address"):
+            if not phones and prop_addr:
                 phones, credits2 = enrich_by_address(
-                    r["Property Address"],
-                    r.get("Property City", "San Antonio"),
-                    r.get("Property State", "TX"),
-                    r.get("Property Zip"),
+                    prop_addr,
+                    get(r, "prop_city", "Property City") or "San Antonio",
+                    get(r, "prop_state", "Property State") or "TX",
+                    get(r, "prop_zip", "Property Zip") or None,
                 )
                 total_credits += credits2
 
@@ -309,7 +331,7 @@ def main():
             r[STATUS_KEY] = "Done" if p1 else "No Phone"
             r[DATE_KEY]   = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-            doc_num = r.get(DOCNUM_KEY, "").strip()
+            doc_num = get(r, "doc_num", "Document Number")
             if doc_num:
                 phone_map[doc_num] = {"phone1": p1, "phone2": p2,
                                        "status": r[STATUS_KEY]}
