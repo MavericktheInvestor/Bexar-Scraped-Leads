@@ -157,15 +157,20 @@ def discover_ids():
 # ── Contact helpers ───────────────────────────────────────────────────────────
 
 def urgency_tag(score):
+    try:
+        score = int(float(score))
+    except (ValueError, TypeError):
+        score = 0
     if score >= 90: return "Hot Lead 🔥"
     if score >= 80: return "Warm Lead"
     return "Cool Lead"
 
 
 def build_contact(r):
+    score = int(float(r.get("score") or 0))
     tags = [
         "Bexar County Lead",
-        urgency_tag(r["score"]),
+        urgency_tag(score),
         r["source"],
     ]
     if r.get("lead_type"):
