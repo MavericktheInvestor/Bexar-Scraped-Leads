@@ -118,15 +118,31 @@ def enrich_address_cli(address, city, state="TX", zip_=None):
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError:
-        raise RuntimeError(f"dm enrich bad JSON: {result.stdout[:200]}")
+        raise RuntimeError(f"dm enrich bad JSON: {result.stdout[:300]}")
 
-    # Response shape: {data: {contacts: [{phones: [...]}]}, credits: {used: N}}
-    contacts     = data.get("data", {}).get("contacts", [])
-    credits_used = data.get("credits", {}).get("used", 0)
+    # Debug: print first response to learn the actual shape
+    import sys
+    print(f"  [DEBUG] dm enrich JSON type={type(data).__name__} preview={str(data)[:300]}", file=sys.stderr)
+
+    # CLI may return a list directly OR a dict with {data: {contacts: [...]}}
+    if isinstance(data, list):
+        # List of contact objects directly
+        contacts = data
+        credits_used = 0
+    elif isinstance(data, dict):
+        contacts     = data.get("data", {}).get("contacts", [])
+        if not contacts:
+            # alternate shape: {contacts: [...]}
+            contacts = data.get("contacts", [])
+        credits_used = data.get("credits", {}).get("used", 0)
+    else:
+        contacts = []
+        credits_used = 0
 
     all_phones = []
     for c in contacts:
-        all_phones.extend(c.get("phones", []))
+        if isinstance(c, dict):
+            all_phones.extend(c.get("phones", []))
 
     return all_phones, credits_used
 
