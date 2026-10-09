@@ -2,9 +2,11 @@
 Deal Machine Skip Trace
 =======================
 Reads:  data/skip_trace_queue.csv   (built by skip_trace_queue.py)
-Action: Calls Deal Machine Enrich-by-Name API for each lead that
-        has no phone yet, writes phones back to the CSV and to
-        the Google Sheets "Skip Trace Queue" tab.
+Action: Uses Deal Machine CLI (dm enrich address) to look up owner
+        phones for each lead, writes Phone 1/2 back to the CSV and
+        to the Google Sheets "Skip Trace Queue" tab.
+
+Uses the official DM CLI to avoid Cloudflare IP bans on GitHub Actions.
 
 ⚠️  DO NOT RUN until Maverick gives explicit green-light.
     The workflow is gated: the GitHub Actions job only runs when
@@ -43,96 +45,83 @@ STATUS_KEY  = "Skip Trace Status"
 DATE_KEY    = "Skip Trace Date"
 DOCNUM_KEY  = "Document Number"
 
-# ── DM API helpers ─────────────────────────────────────────────────────────────
+# ── DM CLI helpers ─────────────────────────────────────────────────────────────
 
-def dm_headers():
-    return {
-        "Authorization": f"Bearer {DM_API_KEY}",
-        "Content-Type":  "application/json",
-        "Accept":        "application/json",
-    }
-
-
-def dm_post(path, body):
-    import urllib.request
-    url  = f"{DM_API_BASE}{path}"
-    data = json.dumps(body).encode()
-    req  = urllib.request.Request(url, data=data, headers=dm_headers(), method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read()), resp.status
-    except Exception as e:
-        if hasattr(e, "read"):
-            err_body = e.read().decode(errors="replace")
-            raise RuntimeError(f"HTTP {getattr(e, 'code', '?')}: {err_body}") from e
-        raise
+def install_dm_cli():
+    """Install the Deal Machine CLI if not already present."""
+    import subprocess
+    result = subprocess.run(["which", "dm"], capture_output=True)
+    if result.returncode == 0:
+        return  # already installed
+    print("  Installing Deal Machine CLI …")
+    subprocess.run(
+        ["npm", "install", "-g", "@dealmachine/cli"],
+        check=True, capture_output=False
+    )
 
 
-def dm_get(path, params=None):
-    import urllib.request, urllib.parse
-    url = f"{DM_API_BASE}{path}"
-    if params:
-        url += "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers=dm_headers())
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+def dm_cli_login():
+    """Authenticate the CLI with the API key."""
+    import subprocess
+    env = os.environ.copy()
+    env["DM_API_KEY"] = DM_API_KEY
+    # dm login --api-key accepts the key directly
+    result = subprocess.run(
+        ["dm", "login", "--api-key", DM_API_KEY],
+        capture_output=True, text=True, env=env, timeout=30
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"dm login failed: {result.stderr}")
 
 
 # ── Skip trace logic ───────────────────────────────────────────────────────────
 
-def enrich_by_name(first, last, address=None, city=None, state="TX", zip_=None):
+def enrich_address_cli(address, city, state="TX", zip_=None):
     """
-    Deal Machine Enrich-by-Name endpoint.
-    Returns list of phone dicts: [{number, type, do_not_call, carrier}, ...]
-    Costs 1 credit per person returned.
+    Use `dm enrich address` CLI to get owner phones.
+    Returns (phones_list, credits_used) where phones_list is
+    [{number, type, do_not_call}, ...] shaped the same as the API.
     """
-    body = {
-        "first_name": first,
-        "last_name":  last,
-        "fields": ["phones", "emails"],
-    }
-    # Adding address tightens the match significantly
-    if address:
-        body["address"] = address
+    import subprocess, tempfile
+
+    full_addr = address
     if city:
-        body["city"] = city
+        full_addr += f", {city}"
     if state:
-        body["state"] = state
+        full_addr += f", {state}"
     if zip_:
-        body["zip"] = zip_
+        full_addr += f" {zip_}"
 
-    result, status = dm_post("/enrichment/name", body)
-    data = result.get("data", {})
-    phones = data.get("phones", [])
-    credits_used = result.get("credits", {}).get("used", 0)
-    return phones, credits_used
+    cmd = [
+        "dm", "enrich", "address", full_addr,
+        "--contact-audience", "owners",
+        "--fields", "phones",
+        "--scrub-dnc",
+        "--json",
+        "--yes",
+    ]
 
+    env = os.environ.copy()
+    env["DM_API_KEY"] = DM_API_KEY
 
-def enrich_by_address(address, city, state="TX", zip_=None):
-    """
-    Deal Machine Enrich-by-Address endpoint.
-    Returns owner + phones for a property address.
-    Fallback when name enrichment returns nothing.
-    """
-    body = {
-        "address": address,
-        "city":    city,
-        "state":   state,
-        "fields":  ["owner", "contacts"],
-    }
-    if zip_:
-        body["zip"] = zip_
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
 
-    result, status = dm_post("/enrichment/address", body)
-    data   = result.get("data", {})
-    # contacts is array of {dm_person_id, full_name, phones, ...}
-    contacts      = data.get("contacts", [])
-    credits_used  = result.get("credits", {}).get("used", 0)
+    if result.returncode != 0:
+        raise RuntimeError(f"dm enrich failed: {result.stderr.strip()[:300]}")
 
-    # Flatten phones from all contacts
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        raise RuntimeError(f"dm enrich bad JSON: {result.stdout[:200]}")
+
+    # Response shape: {data: {contacts: [{phones: [...]}]}, credits: {used: N}}
+    contacts     = data.get("data", {}).get("contacts", [])
+    credits_used = data.get("credits", {}).get("used", 0)
+
     all_phones = []
     for c in contacts:
         all_phones.extend(c.get("phones", []))
+
     return all_phones, credits_used
 
 
@@ -245,6 +234,10 @@ def main():
         print("❌ DM_API_KEY not set")
         sys.exit(1)
 
+    if not dry_run:
+        install_dm_cli()
+        dm_cli_login()
+
     # Load queue
     if not QUEUE_CSV.exists():
         print(f"❌ {QUEUE_CSV} not found — run skip_trace_queue.py first")
@@ -298,27 +291,26 @@ def main():
             continue
 
         try:
-            # Try name enrichment first
-            phones, credits = enrich_by_name(
-                first, last,
-                address = get(r, "mail_address", "Mailing Address",
-                                 "prop_address",  "Property Address"),
-                city    = get(r, "mail_city",    "Mailing City",
-                                 "prop_city",     "Property City"),
-                state   = get(r, "mail_state",   "Mailing State",
-                                 "prop_state",    "Property State") or "TX",
-                zip_    = get(r, "mail_zip",     "Mailing Zip",
-                                 "prop_zip",      "Property Zip"),
-            )
-            total_credits += credits
+            # Try mailing address first (owner's address = tighter match)
+            mail_addr = get(r, "mail_address", "Mailing Address")
+            phones, credits = [], 0
+
+            if mail_addr:
+                phones, credits = enrich_address_cli(
+                    mail_addr,
+                    get(r, "mail_city",  "Mailing City")  or "San Antonio",
+                    get(r, "mail_state", "Mailing State") or "TX",
+                    get(r, "mail_zip",   "Mailing Zip")   or None,
+                )
+                total_credits += credits
 
             # Fallback: enrich by property address
             if not phones and prop_addr:
-                phones, credits2 = enrich_by_address(
+                phones, credits2 = enrich_address_cli(
                     prop_addr,
-                    get(r, "prop_city", "Property City") or "San Antonio",
+                    get(r, "prop_city",  "Property City")  or "San Antonio",
                     get(r, "prop_state", "Property State") or "TX",
-                    get(r, "prop_zip", "Property Zip") or None,
+                    get(r, "prop_zip",   "Property Zip")   or None,
                 )
                 total_credits += credits2
 

@@ -43,9 +43,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Set up Node.js (for Deal Machine CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Install dependencies
         run: |
           pip install google-auth google-auth-httplib2 google-api-python-client
+          npm install -g @dealmachine/cli
 
       - name: Dry run — estimate credits only
         if: ${{ github.event.inputs.dry_run == 'yes' }}
