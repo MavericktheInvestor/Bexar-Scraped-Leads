@@ -1,0 +1,48 @@
+name: Export Direct Mail List
+
+# Exports leads with NO phone number to a mail-house-ready CSV
+# and pushes them to the "Direct Mail Queue" Google Sheets tab.
+# Upload data/direct_mail_export.csv to YellowLettersComplete or Click2Mail.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "direct-mail"
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install google-auth google-auth-httplib2 google-api-python-client
+
+      - name: Export direct mail CSV
+        run: python scraper/direct_mail_export.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Commit export CSV
+        run: |
+          git config user.name "Claude"
+          git config user.email "noreply@anthropic.com"
+          git add data/direct_mail_export.csv || true
+          git diff --cached --quiet || git commit -m "direct-mail: $(date -u +%Y-%m-%d)"
+          git push origin main || (git pull --rebase origin main && git push origin main)
