@@ -19,7 +19,7 @@ except ImportError:
     HAS_DBF = False
 
 CLERK_BASE    = "https://bexar.tx.publicsearch.us"
-LOOKBACK_DAYS = 7
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "90"))
 SHEET_ID      = "1mC-bTqyRB-VHlLdNCzCfkaPRAq0TsLYSc93JhjbiVJk"
 SHEET_NAME    = "Sheet1"
 
