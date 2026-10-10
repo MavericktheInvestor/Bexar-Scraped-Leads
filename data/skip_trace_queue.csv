@@ -1,14 +1,60 @@
 priority_rank,first,last,prop_address,prop_city,prop_state,prop_zip,mail_address,mail_city,mail_state,mail_zip,score,lead_type,flags,source,doc_num,filed
-1,Vaughn,Brittney A,"11211 ARISTIDES, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260195098,2026-10-05
-2,Garcia,Raymond Rojas Iii,"502 MIDWAY CREST, SAN ANTONIO, TEXAS, 78258",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260196947,2026-10-06
-3,Patrick,Marilyn Antipuesto,"9327 SELENE PLACE, SAN ANTONIO, TEXAS, 78252",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197458,2026-10-07
-4,Hernandez,Caroline Costa,"8918 WILLMON WAY, SAN ANTONIO, TEXAS, 78239",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197425,2026-10-07
-5,Wright,Claudia I Rios,"607 LAGO LANDING, SAN ANTONIO, TEXAS, 78263",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197814 | 20260197812 | 20260197813,2026-10-07
-6,Castro,Adam,"10139 PEARL CRK, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197225,2026-10-07
-7,Flores,Kevin Eliut,"6115 YELLOWSTONE COAL, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260194904,2026-10-05
-8,Arenas,Sergio Domingo Alejaldre,"10751 AQUEDUCT CREEK, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260196540,2026-10-06
-9,Szyszkowski,Adam A,"6421 NAPA FERRY, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260196073,2026-10-06
-10,Herrera,Mario N Jr,"14823 QUARTZ COVE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260196197,2026-10-06
-11,Gonzalez,Ida Sophia,"7834 NOPALITOS COVE, SAN ANTONIO, TEXAS, 78239",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260196940,2026-10-06
-12,Mailloux,Roman Edmund,"10828 MINITA CREEK, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197115,2026-10-07
-13,Coralin,Victor Luis Jr,"3510 GEORGIA TRACE, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260197753,2026-10-07
+1,City,Of San Antonio,331 LOY DR,San Antonio,TX,,,,TX,,100,Notice of Foreclosure,Pre-foreclosure | New this week | Tax delinquency | Multiple distress signals,County Clerk,20260140690 | 20260166499 | 20260134662 | 20260148729 | 20260148380 | 20260149078 | 20260144010 | 20260142086 | 20260142085 | 20260146735 | 20260140033 | 20260139011 | 20260160680 | 20260152933 | 20260151266 | 20260161942 | 20260152934 | 20260156265 | 20260163001 | 20260171511 | 20260171528 | 20260171526 | 20260171529 | 20260171530 | 20260164059 | 20260148731 | 20260141537,2026-07-21
+2,Molina,Jose Juan,"25002 WHITE CREEK, SAN ANTONIO, TEXAS, 78255",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260137193,2026-07-16
+3,Niebla,Elvia E,"25026 WHITE CREEK, SAN ANTONIO, TEXAS, 78255",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260137195,2026-07-16
+4,Millan,Michael,"12544 DAINGERFIELD, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260137206,2026-07-16
+5,Vasquez,Raul Iii,"8706 THYME MEADOW, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260137225,2026-07-16
+6,Shamon,Brenda L,"310 ONE OAK, SAN ANTONIO, TEXAS, 78228",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260138581,2026-07-17
+7,Bowens,Brendan,"9614 NUBUCK BRANCH, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260134361,2026-07-13
+8,Minor,Gail,"4139 MYSTIC SUNRISE DR, SAN ANTONIO, TEXAS, 78244",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260134258,2026-07-13
+9,Huerta,Aracely,"10027 MOFFITT DR, SAN ANTONIO, TEXAS, 78251",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260136774,2026-07-15
+10,Solis,Alfredo,701 N SAN JACINTO ST,San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260148097,2026-07-31
+11,Carrillo,Jessica Pamela,"10637 MUNOZ MANOR, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260148212,2026-07-31
+12,Sless,Yury,"13423 ANSELLS PLACE, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260145166,2026-07-28
+13,Mcintire,James Christopher,"5144 BAY BREEZE, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260145944,2026-07-28
+14,Strickland,Larry,"8803 SHADY MOUNTAIN, SAN ANTONIO, TEXAS, 78254",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260144033,2026-07-27
+15,Molina,Valeria M Martinez,"10430 PACAOS PL, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260144014,2026-07-27
+16,Holden,William Allan,"6749 MARBLE RIDGE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260145581,2026-07-28
+17,Higginbotham,Tanya-Virginia,"15018 MUDSTONE PLACE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260143036,2026-07-24
+18,Daniels,Gwendolyn M,"13826 PEASE CROSSING, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260144911,2026-07-27
+19,Bautista,Jonathan,"2510 BARKEY SPRINGS, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260142771,2026-07-23
+20,Brundrett,Stacey Marie,"13425 SANDY SHORE, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260142256 | 20260142255,2026-07-23
+21,Williams,Chazzmin Oshey,"6922 AQUA MARINE, SAN ANTONIO, TEXAS, 78263",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260149447,2026-08-03
+22,Angelo,Anthony Alexander D,"11412 BAMBOO DRIVE, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260149400,2026-08-03
+23,Ramos,Rosendo Daniel Jr,"10426 PACAOS PLACE, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260149465,2026-08-03
+24,Hill,Tina,"37171 ELK TRAIL, SAN ANTONIO, TEXAS, 78244",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260138882,2026-07-17
+25,Otiende,Jacob,"13426 MARLIN DOCK, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260146133,2026-07-29
+26,Miles,Jesse Guillermo,"9421 CHATSIDE, SCHERTZ, TEXAS, 78154",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260141611,2026-07-22
+27,Kim,Sung P,"6635 EMBANKMENT RD, SAN ANTONIO, TEXAS, 78252",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260136379,2026-07-15
+28,Barrera,Patricia,"7414 HUNTERS LAND, SAN ANTONIO, TEXAS, 78249",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260136658,2026-07-15
+29,De,Palubos Pauline Jane,"5147 FLIGHT SAIL, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260136202 | 20260136203,2026-07-14
+30,Aguilar,Martin,"3415 WARLOW BRANCH, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260140479,2026-07-21
+31,Gindratt,Anthony Lawrence,"12421 DIME BOX, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260139915,2026-07-20
+32,Allen,Maurice K,"12624 BRITE RANCH, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260140817,2026-07-21
+33,Marquez,Nicholas Adam,"7714 INDIA STAR, SAN ANTONIO, TEXAS, 78263",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260140853,2026-07-21
+34,Fenex,Kathy Christine,"6741 MARBLE RIDGE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260160790,2026-08-18
+35,Zabawa,Haley Erin,"12043 LA CUCHILLA, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260152270,2026-08-05
+36,Bushard,Christopher Wayne,"8618 UTOPIA GARDENS, SAN ANTONIO, TEXAS, 78223",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260162263,2026-08-20
+37,Mercado,Soryangelis Colon,"10406 PACAOS PLACE, SAN ANTONIO, TEXAS, 78214",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260161383,2026-08-19
+38,Gonzales,April,"11603 WATER MESA, SAN ANTONIO, TEXAS, 78252",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150599,2026-08-03
+39,Jimenez,Genoveva L Estate,5475 JOSE LN,San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260162578,2026-08-20
+40,Cano,John Christian,1139 W MULBERRY AVE,San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260162581,2026-08-20
+41,Herring,Justin James,"6746 MARBLE RIDGE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150785,2026-08-04
+42,Cantu,Anita,"10524 HARLEQUIN, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150545,2026-08-03
+43,Sandoval,Jairo,"11417 EVERGREEN ROSE, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260159196,2026-08-17
+44,Pnc,Bank Na,"6160 ECKHERT RD, #802, SAN ANTONIO, TEXAS, 78240",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150995,2026-08-04
+45,Cruz,Tony D Jr,"6523 VELMA PATH, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260159138,2026-08-17
+46,Gibbens,Randall,"4724 GYPSUM FLS, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260153034,2026-08-06
+47,Perez,Lisa Chong,"5127 BOILING SPRINGS, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260168891,2026-08-28
+48,Clemmens,Jenny,"14361 LA VERNIA RD, SAINT HEDWIG, TEXAS, 78152",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260163777,2026-08-21
+49,Gomez,Elizabeth D,"1046 RANCH FLS, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260163363,2026-08-21
+50,United,States Secretary Of Housing And Urban Development,"14410 PEMBRIDGE DR, SAN ANTONIO, TEXAS, 78247",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260170752,2026-08-31
+51,Mcdaniel,Michael D Jr,"13416 SANDY SHORE, SAN ANTONIO, TEXAS, 78245",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260168190,2026-08-28
+52,Gonzalez,Mariana,"4723 GYPSUM FALLS, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150046,2026-08-03
+53,Pereyra,Milagros Lizbeth,"5006 QUARTZ ROW DR, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260164846,2026-08-24
+54,Makani,Nadirshah,"1667 HOUSE FINCH DRIVE, SAN ANTONIO, TEXAS, 78253",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260149985,2026-08-03
+55,Bolufemi,Bridget Lark,"11448 BAMBOO DR, CONVERSE, TEXAS, 78109",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260169289,2026-08-31
+56,Lopez,Roberto Jose,"6622 COQUINA COVE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260169269,2026-08-31
+57,Hall,Clayton,"11703 WATER MESA, SAN ANTONIO, TEXAS, 78252",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260170371,2026-08-31
+58,Villalobos,Edgar Alfredo,"17506 BUFFALO GRASS LANE, ELMENDORF, TEXAS, 78112",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260167419,2026-08-27
+59,De,La Cruz Jesus Manuel Jr,"4343 COMMERCIAL AVE, SAN ANTONIO, TEXAS, 78221",San Antonio,TX,,,,TX,,70,Notice of Foreclosure,Pre-foreclosure | New this week,County Clerk,20260150968,2026-08-04
