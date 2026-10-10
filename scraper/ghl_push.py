@@ -386,6 +386,12 @@ def main():
             skipped += 1
             continue
 
+        # Only push leads that have a phone number
+        phone1 = r.get("Phone 1", "") or r.get("phone1", "")
+        if not phone1.strip():
+            skipped += 1
+            continue
+
         try:
             contact_id, action = create_or_update_contact(r)
             if not contact_id:
