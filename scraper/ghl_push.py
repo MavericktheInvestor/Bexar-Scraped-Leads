@@ -267,7 +267,9 @@ def create_or_update_contact(r):
             print(f"    ⚠  Update failed: {e}")
             return existing_id, "update_failed"
     else:
+        print(f"    → POST /contacts/ body: {json.dumps({k:v for k,v in body.items() if k != 'customFields'})}")
         result, status = ghl_post("/contacts/", body)
+        print(f"    ← Response ({status}): {json.dumps(result)[:300]}")
         contact_id = result.get("contact", {}).get("id") or result.get("id", "")
         return contact_id, "created"
 
