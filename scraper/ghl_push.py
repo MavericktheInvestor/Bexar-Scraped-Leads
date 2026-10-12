@@ -203,12 +203,10 @@ def build_contact(r):
     }
 
     # Phone numbers (populated after skip trace)
+    # GHL only accepts "phone" — phone2 is not a valid field and causes 422
     phone1 = r.get("phone1", "") or r.get("Phone 1", "")
-    phone2 = r.get("phone2", "") or r.get("Phone 2", "")
     if phone1:
         body["phone"] = phone1
-    if phone2:
-        body["phone2"] = phone2
 
     # Address — handle both snake_case (old queue) and Title Case (skip_traced.csv)
     mail_addr = r.get("mail_address") or r.get("Mailing Address", "")
