@@ -1,0 +1,42 @@
+name: GHL Cleanup (Remove No-Phone Contacts)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'dry_run=true previews without deleting'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "ghl-cleanup"
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Remove contacts without phone numbers
+        run: python scraper/ghl_cleanup.py
+        env:
+          PYTHONUNBUFFERED: "1"
+          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
