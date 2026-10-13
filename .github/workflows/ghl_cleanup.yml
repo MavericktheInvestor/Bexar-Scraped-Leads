@@ -9,29 +9,15 @@ on:
         default: 'true'
         type: string
 
-permissions:
-  contents: write
-
 jobs:
   run:
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Hello
+        run: echo "DRY_RUN=${{ github.event.inputs.dry_run }}"
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Remove contacts without phone numbers
-        run: python scraper/ghl_cleanup.py
+      - name: Check secret
+        run: echo "key_length=${#GHL_API_KEY}"
         env:
-          PYTHONUNBUFFERED: "1"
           GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
-          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
