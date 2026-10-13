@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cleanup:
+  run:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
 
