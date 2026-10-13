@@ -2,7 +2,7 @@
 GHL Cleanup — delete contacts with no phone number.
 Reads all contacts in the location, deletes any without a phone.
 """
-import json, os, sys, time, urllib.request, urllib.parse
+import json, os, sys, time, urllib.request, urllib.parse, urllib.error
 
 GHL_API_KEY  = os.environ["GHL_API_KEY"]
 LOCATION_ID  = os.environ["GHL_LOCATION_ID"]
@@ -23,23 +23,37 @@ def ghl_get(path, params=None):
     if params:
         url += "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers=headers())
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"HTTP {e.code} on GET {path}: {body}", flush=True)
+        raise
+    except urllib.error.URLError as e:
+        print(f"URLError on GET {path}: {e.reason}", flush=True)
+        raise
 
 def ghl_delete(path):
     url = f"{BASE}{path}"
     req = urllib.request.Request(url, headers=headers(), method="DELETE")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.status
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        print(f"HTTP {e.code} on DELETE {path}: {body}", flush=True)
+        raise
 
 def get_all_contacts():
     contacts = []
-    page = 1
     after = None
+    after_id = None
     while True:
         params = {"locationId": LOCATION_ID, "limit": 100}
         if after:
             params["startAfter"] = after
+        if after_id:
             params["startAfterId"] = after_id
         data = ghl_get("/contacts/", params)
         batch = data.get("contacts", [])
@@ -47,10 +61,10 @@ def get_all_contacts():
             break
         contacts.extend(batch)
         meta = data.get("meta", {})
-        after = meta.get("startAfter")
+        after    = meta.get("startAfter")
         after_id = meta.get("startAfterId")
         print(f"  Fetched {len(contacts)} contacts so far…", flush=True)
-        if not meta.get("nextPageUrl") and not after:
+        if not after and not after_id:
             break
         time.sleep(0.3)
     return contacts
@@ -60,10 +74,15 @@ def main():
     print(f"Location: {LOCATION_ID}\n")
 
     print("Fetching all contacts…")
-    all_contacts = get_all_contacts()
+    try:
+        all_contacts = get_all_contacts()
+    except Exception as e:
+        print(f"\n❌ Failed to fetch contacts: {e}", flush=True)
+        sys.exit(1)
+
     print(f"\nTotal contacts: {len(all_contacts)}")
 
-    no_phone = [c for c in all_contacts if not c.get("phone", "").strip()]
+    no_phone = [c for c in all_contacts if not (c.get("phone") or "").strip()]
     print(f"Contacts without phone: {len(no_phone)}")
     print(f"Contacts with phone:    {len(all_contacts) - len(no_phone)}\n")
 
