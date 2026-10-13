@@ -12,10 +12,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: "ghl-cleanup"
-  cancel-in-progress: false
-
 jobs:
   run:
     runs-on: ubuntu-22.04
@@ -31,16 +27,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Check secrets are set
-        run: |
-          if [ -z "$GHL_API_KEY" ]; then echo "ERROR: GHL_API_KEY secret is empty"; exit 1; fi
-          if [ -z "$GHL_LOCATION_ID" ]; then echo "ERROR: GHL_LOCATION_ID secret is empty"; exit 1; fi
-          echo "Secrets present. DRY_RUN=$DRY_RUN"
-        env:
-          GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
-          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
 
       - name: Remove contacts without phone numbers
         run: python scraper/ghl_cleanup.py
