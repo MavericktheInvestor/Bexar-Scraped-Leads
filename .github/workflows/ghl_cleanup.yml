@@ -12,9 +12,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: "ghl-cleanup"
-  cancel-in-progress: false
 
 jobs:
   cleanup:
