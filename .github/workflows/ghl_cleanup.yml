@@ -4,13 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'dry_run=true previews without deleting'
-        required: true
+        description: 'Set to true to preview without deleting'
+        required: false
         default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
+        type: string
 
 permissions:
   contents: read
