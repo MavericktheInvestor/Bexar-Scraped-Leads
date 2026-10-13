@@ -4,13 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'preview = show what would be deleted | delete = actually delete contacts'
+        description: 'true = preview only, false = delete contacts with no phone'
         required: true
-        default: 'preview'
-        type: choice
-        options:
-          - preview
-          - delete
+        default: 'true'
+        type: string
 
 permissions:
   contents: write
@@ -41,4 +38,4 @@ jobs:
           PYTHONUNBUFFERED: "1"
           GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
           GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
-          DRY_RUN: ${{ github.event.inputs.dry_run == 'preview' && 'true' || 'false' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
