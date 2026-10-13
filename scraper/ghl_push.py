@@ -358,8 +358,10 @@ def main():
         print("   Run with --discover first to get pipeline/stage IDs")
         sys.exit(1)
 
-    # Load queue — prefer skip_traced.csv (has phones) if it exists
-    queue_path = DATA_DIR / "skip_traced.csv"
+    # Load queue — prefer dm_fresh_leads.csv > skip_traced.csv > skip_trace_queue.csv
+    queue_path = DATA_DIR / "dm_fresh_leads.csv"
+    if not queue_path.exists():
+        queue_path = DATA_DIR / "skip_traced.csv"
     if not queue_path.exists():
         queue_path = DATA_DIR / "skip_trace_queue.csv"
     if not queue_path.exists():
