@@ -8,6 +8,8 @@ on:
         required: true
         default: 'true'
         type: string
+  schedule:
+    - cron: '45 13 * * 1-5'   # 8:45am Central (13:45 UTC), Mon–Fri
 
 permissions:
   contents: write
@@ -32,4 +34,4 @@ jobs:
           PYTHONUNBUFFERED: "1"
           GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
           GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}

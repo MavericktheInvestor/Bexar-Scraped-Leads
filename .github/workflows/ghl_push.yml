@@ -11,6 +11,8 @@ on:
         options:
           - discover
           - push
+  schedule:
+    - cron: '55 13 * * 1-5'   # 8:55am Central (13:55 UTC), Mon–Fri
 
 permissions:
   contents: write
@@ -51,7 +53,7 @@ jobs:
           GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
 
       - name: Push leads to GHL (push mode)
-        if: ${{ github.event.inputs.mode == 'push' }}
+        if: ${{ github.event.inputs.mode == 'push' || github.event_name == 'schedule' }}
         run: python scraper/ghl_push.py
         env:
           PYTHONUNBUFFERED: "1"
