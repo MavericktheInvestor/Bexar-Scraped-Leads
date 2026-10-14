@@ -16,6 +16,7 @@ def headers():
         "Version": "2021-07-28",
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; GHL-Integration/1.0)",
     }
 
 def ghl_get(path, params=None):
