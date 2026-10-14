@@ -1,36 +1,51 @@
 first,last,prop_address,Phone 1,Phone 2,estimated_value,tax_delinquent_year,source,Skip Trace Status,Skip Trace Date
-Antoinette,Flores,"315 BALTIMORE, SAN ANTONIO, TX 78215",(817) 479-3555,,334000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Ricardo,Gonzalez,"811 MCCULLOUGH AVE, SAN ANTONIO, TX 78215",(210) 782-0578,,294000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Karen,Miller,"814 S CHERRY ST, SAN ANTONIO, TX 78203",(210) 341-5411,,228000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Ali,Rajabi,"810 E EUCLID AVE, SAN ANTONIO, TX 78212",(619) 572-1247,,465000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Michael,Bell,"810 E EUCLID AVE, SAN ANTONIO, TX 78212",(501) 220-8456,,465000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Ruben,Lopez,"815 S OLIVE ST, SAN ANTONIO, TX 78210",(210) 365-6280,(210) 695-8177,190000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Michael,Shepherd,"720 VIRGINIA BLVD, SAN ANTONIO, TX 78203",(210) 666-2028,(210) 666-0991,227000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Beverly,Shepherd,"720 VIRGINIA BLVD, SAN ANTONIO, TX 78203",(210) 289-7207,(210) 666-2028,227000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Blanca,Trevino,"721 ATLANTA ST, SAN ANTONIO, TX 78212",(210) 974-8419,(210) 325-1048,447000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Norma,Garcia,"126 OHIO ST, SAN ANTONIO, TX 78210",(210) 931-2229,(210) 320-2921,182000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Priscilla,Caballero,"334 W CEVALLOS, SAN ANTONIO, TX 78204",(210) 265-5498,(210) 801-5230,448000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Cassandra,Paz,"334 W CEVALLOS, SAN ANTONIO, TX 78204",(817) 691-5870,(210) 222-2400,448000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Pedro,Moncada,"1418 E CESAR E CHAVEZ BLVD, SAN ANTONIO, TX 78210",(210) 371-2260,(210) 887-1576,228000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Desiree,Alonzo,"415 LOMBRANO ST, SAN ANTONIO, TX 78207",(210) 831-9569,,210000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Aniceto,Perez,"626 DELAWARE ST, SAN ANTONIO, TX 78210",(361) 701-5701,,160000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Aniceto,Perez,"626 DELAWARE ST, SAN ANTONIO, TX 78210",(832) 368-6396,(832) 790-8268,160000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-B,Perez,"626 DELAWARE ST, SAN ANTONIO, TX 78210",(210) 732-3723,(210) 320-0800,160000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Mary,Rios,"1514 W LAUREL, SAN ANTONIO, TX 78201",(210) 639-3767,,256000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Linda,Barrera,"715 LOMBRANO ST, SAN ANTONIO, TX 78207",(210) 687-9804,,143000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Imtiaz,Hussain,"1507 N TRINITY ST, SAN ANTONIO, TX 78207",(210) 598-0399,(408) 689-2847,332000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Maria,Rodriguez,"103 APPLIN AVE, SAN ANTONIO, TX 78210",(210) 923-8061,(210) 396-3008,175000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Sandra,Melendez,"907 FLORIDA ST, SAN ANTONIO, TX 78210",(210) 374-2802,(210) 532-7754,168000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Richard,Garcia,"1109 S HACKBERRY ST, SAN ANTONIO, TX 78210",(210) 648-2631,,264000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Larry,Hill,"806 INDIANA ST, SAN ANTONIO, TX 78210",(210) 975-8402,,196000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Josie,Sayles,"129 UTAH ST, SAN ANTONIO, TX 78210",(512) 929-8821,(512) 396-4298,275000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Charles,Minton,"902 INDIANA ST, SAN ANTONIO, TX 78210",(706) 575-0277,,708000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Alicia,Renteria,"1015 S OLIVE ST, SAN ANTONIO, TX 78210",(210) 534-4446,,199000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Alicia,Renteria,"1015 S OLIVE ST, SAN ANTONIO, TX 78210",(210) 534-4446,,199000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Lydia,Palacios,"1025 S PINE ST, SAN ANTONIO, TX 78210",(210) 834-3143,(210) 699-9724,265000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Nicholas,Farley,"1028 PIEDMONT AVE, SAN ANTONIO, TX 78210",(210) 844-1855,(210) 533-2302,270000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Maria,Moreno,"1327 HAYS ST, SAN ANTONIO, TX 78202",(210) 449-4207,,199000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Maria,Landeros,"1316 LAMAR ST, SAN ANTONIO, TX 78202",(210) 896-4343,(210) 228-0769,209000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Joseph,Guajardo,"905 CAMDEN ST, SAN ANTONIO, TX 78215",(210) 281-8207,,311000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Joseph,Guajardo,"905 CAMDEN ST, SAN ANTONIO, TX 78215",(210) 557-9847,,311000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
-Jeanette,Mendoza,"704 E EUCLID AVE, SAN ANTONIO, TX 78212",(210) 733-7874,,439000,2024,DealMachine-TaxDelinquent-Absentee,Done,2026-10-13
+Manuel,Gonzalez,"7747 RIMHURST, SAN ANTONIO, TX 78250",2106802774,2102047286,293000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Juan,Vasquez,"2431 HOLLY HILL DR, SAN ANTONIO, TX 78222",2106482270,2102396430,284000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Michael,Lichtmacher,"14023 OAKHILL WAY, SAN ANTONIO, TX 78231",2102489140,,559000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Herlinda,Mares,"615 EMMETT AVE, SAN ANTONIO, TX 78221",2107366831,2105982529,148000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Clint,Norton,"5239 SANDY SHLS, SAN ANTONIO, TX 78247",2103385390,,373000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Rubina,Ali,"6629 KINGS CROWN E, SAN ANTONIO, TX 78233",9047794651,9042365444,486000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Frank,Halvorson,"11730 OCEAN SPGS, SAN ANTONIO, TX 78249",2107388836,,177000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Antonia,Luna,"434 DRURY LN, SAN ANTONIO, TX 78221",2109219189,2109212511,167000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Roy,Montez,"303 BASIN DR, SAN ANTONIO, TX 78216",2104174460,,353000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Romeo,Ayala,"242 WAINWRIGHT ST, SAN ANTONIO, TX 78211",2106707224,,210000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Frank,Cabrera,"1216 W MAYFIELD BLVD, SAN ANTONIO, TX 78211",2105340466,2102910792,140000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Mattie,Young,"8051 CHESTNUT ASH DR, CONVERSE, TX 78109",6624895645,,238000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Caroline,Uzoh,"3030 BEACON FLD, SAN ANTONIO, TX 78245",2108589585,2103795409,170000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Sonia,Martin,"2610 S OLIVE ST, SAN ANTONIO, TX 78210",2102546609,2102163716,219000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Maribel,Medina,"6250 VALLEY CLF, SAN ANTONIO, TX 78250",2108789291,2103875489,227000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Enrique,Torrez,"403 PINEHURST BLVD, SAN ANTONIO, TX 78221",2107300526,,226000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Melissa,Young,"130 AARON PL, SAN ANTONIO, TX 78221",2106277437,2106272779,249000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Luis,Palacios,"1227 STONEWALL ST, SAN ANTONIO, TX 78211",2108708361,2109737182,178000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Angel,Ipina,"162 LEROUX ST, SAN ANTONIO, TX 78207",2109234716,2108524074,152000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Francisco,Medina,"1906 RUIZ ST, SAN ANTONIO, TX 78207",2103875489,,138000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Antonio,Pedraza,"10403 SALITRILLO BND, CONVERSE, TX 78109",2109120355,,284000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Dip,Mahato,"134 SAMUEL KEMPER, SAN ANTONIO, TX 78220",5036931332,5036905670,229000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Maria,Delgado,"9 CRYSTAL MOON, SAN ANTONIO, TX 78238",2102245364,,255000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Audrey,Rogers,"15518 ELM PARK ST, SAN ANTONIO, TX 78247",2107678677,,375000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Bonnie,Leroy,"3 STANDWOOD, SAN ANTONIO, TX 78254",6269694676,6268120035,276000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Beatrice,Zepeda,"6814 WINDWARD WAY DR, SAN ANTONIO, TX 78227",2104556119,2106756516,159000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Cesar,Carias,"6010 FALLING STAR DR, SAN ANTONIO, TX 78242",2105487336,2103132000,152000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Rafael,Gutierrez,"1630 SAN CASIMIRO, SAN ANTONIO, TX 78214",2106279893,2103878225,215000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Jeffrey,Kahn,"13508 FAWNWOOD ST, SAN ANTONIO, TX 78233",8595765576,,208000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Juan,Trevino,"5419 RUSHHILL ST, SAN ANTONIO, TX 78228",2103106851,2107859475,181000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Guadalupe,Bernal,"143 BLOCKER ST, SAN ANTONIO, TX 78237",2108278405,2107329927,151000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Alicia,Ortiz,"750 E ASHLEY RD, SAN ANTONIO, TX 78221",8067465310,,253000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Herlinda,Favella,"9110 YETT AVE, SAN ANTONIO, TX 78221",2105848239,2106746393,223000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Carlos,Favella,"1106 FITCH ST, SAN ANTONIO, TX 78211",2106746393,2109778499,128000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Ana,Vasquez,"1502 BRAUBACH, SAN ANTONIO, TX 78214",2105077015,2109778711,214000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Martha,Zorola,"234 BRISTOL AVE, SAN ANTONIO, TX 78214",2102566973,,181000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Jose,Mujica,"243 ROSABELL ST, SAN ANTONIO, TX 78228",2104765345,2107257623,136000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Ublester,Martinez,"326 E LINDBERGH BLVD, UNIVERSAL CITY, TX 78148",2102558216,2132207575,203000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Chad,Beane,"7123 FALLEN TRL, SAN ANTONIO, TX 78244",9497863072,7143896565,206000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Francis,Wearden,"1045 SHOOK AVE APT 148, SAN ANTONIO, TX 78212",5614593937,,196000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Mary,Cisneros,"2222 BUENA VISTA ST, SAN ANTONIO, TX 78207",2102247222,,257000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Jordan,Cedeno,"1114 LA CANADA, SAN ANTONIO, TX 78258",9499237548,9497012727,498000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Reba,Perlotte,"7706 REDSKY CRK, CONVERSE, TX 78109",2108672331,2102310907,243000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Oluwayemisi,Ogunfeitimi,"9722 ASTIN PL, SAN ANTONIO, TX 78251",2107756607,,223000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Beverly,Neville,"4214 FONDREN ST, SAN ANTONIO, TX 78217",8014100802,,306000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Alec,Gonzales,"147 GAGE ST, SAN ANTONIO, TX 78227",2105006182,,175000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Adolfo,Alderete,"9102 SYCAMORE CV, SAN ANTONIO, TX 78245",2102182529,2105989164,274000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Francisco,Sanchez,"10479 INTERSTATE 10 E, SCHERTZ, TX 78154",3259442100,,480000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Raul,Robles,"1047 LEMON TREE ST, SAN ANTONIO, TX 78245",2106789558,,177000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
+Louis,Medellin,"3010 BIG HORN DR, SAN ANTONIO, TX 78228",2104518786,2106933662,220000,2024,DealMachine-TaxDelinquent-Absentee,pre-attached,2026-10-14
