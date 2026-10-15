@@ -46,11 +46,20 @@ jobs:
 
       - name: Discover pipeline IDs (discover mode)
         if: ${{ github.event.inputs.mode == 'discover' }}
-        run: python scraper/ghl_push.py --discover
+        run: python scraper/ghl_push.py --discover | tee data/pipeline_ids.txt
         env:
           PYTHONUNBUFFERED: "1"
           GHL_API_KEY: ${{ secrets.GHL_API_KEY }}
           GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+
+      - name: Commit pipeline IDs (discover mode)
+        if: ${{ github.event.inputs.mode == 'discover' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pipeline_ids.txt
+          git diff --cached --quiet || git commit -m "chore: save pipeline IDs from discover run"
+          git push
 
       - name: Push leads to GHL (push mode)
         if: ${{ github.event.inputs.mode == 'push' || github.event_name == 'schedule' }}
