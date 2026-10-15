@@ -1,0 +1,143 @@
+
+🔍 Discovering pipelines for location: NW8GqAR007aPiHZtIsaD
+  Trying https://rest.gohighlevel.com/v1/pipelines/ (version None) …
+    ✗ HTTP 401: {"msg":"Api key is invalid."}
+  Trying https://services.leadconnectorhq.com/opportunities/pipelines (version 2021-07-28) …
+  ✅ Got 7 pipeline(s) via /opportunities/pipelines
+
+  Found 7 pipeline(s):
+
+  Pipeline: Acquisitions Pipeline
+    ID: QUdDFxhIbRwtLqszjtIk
+    Stages:
+      [0] Left Voivemail/FU
+           ID: 4ae6db3b-1537-4f10-a165-b73f067c9a3d
+      [1] Hot lead
+           ID: 0038d8af-6d92-4ba7-9254-dc9a74c8a82c
+      [2] Warm Lead
+           ID: c497c639-b8cc-4253-8c7a-f77fe4813ea9
+      [3] Follow Up / Working Lead
+           ID: 1bd48fb8-7bd0-4792-bace-d01ab58b9230
+      [4] Negotiating/Due Diligence
+           ID: 347df6ec-0ab1-4f5b-acaf-280b992968f7
+      [5] Contract Sent
+           ID: fa66183d-b748-4abc-98c3-e0cb7a3286cb
+      [6] Contracted
+           ID: f19c87cd-15f1-49eb-922c-88345109b879
+      [7] Pending Closing
+           ID: 8b4ce8ec-dd0f-48d0-8189-11fa598ae573
+      [8] Deal Closed
+           ID: ef864be7-bada-4468-ac1a-4cb1a70a8284
+      [9] Send to Realtor
+           ID: 3281ab4f-ab7d-478b-ab3c-e92272faa675
+      [10] Lost
+           ID: 54126c31-b02e-43a8-bf5c-1a8cdb27a721
+
+  Pipeline: Cash Buyer Lead Pipeline
+    ID: vYeYlG8571xAElcmRglJ
+    Stages:
+      [0] Replied
+           ID: 65a8bd3d-32c8-40a9-b2d8-72dde1c5b59e
+      [1] Buying Criteria Requested)
+           ID: 79f2ec0f-cf9d-4d8b-988a-99d594f0829c
+      [2] Buyer Criteria Received)
+           ID: 7ea15130-ff84-4dc3-8bdb-21f4adcd3c43
+      [3] Wrong Number
+           ID: 6b19038f-84ee-4ebb-96f6-8f0bb7f49e48
+      [4] Lost
+           ID: 8727d72f-9496-4343-8647-65c090df1c53
+
+  Pipeline: Disposition Pipeline
+    ID: bcnIjWkZ4cq22IYjdaGR
+    Stages:
+      [0] Replied
+           ID: ba1c2017-69cb-416c-ae82-c710a257f995
+      [1] Attention
+           ID: 9a94aea4-83a5-4ff6-99f6-bbf3ad1f67ef
+      [2] Negotiations
+           ID: 22f8f037-aa8d-40d8-a3d6-f8e2d96da02f
+      [3] Appointment Scheduled (Showing)
+           ID: a57d54d0-b349-4dfd-85f3-31d9ce1d1da5
+      [4] Contract Assigned
+           ID: 6272dd39-96e1-4c32-a403-9ce0ef7ec247
+      [5] Pending Closing (Buyer)
+           ID: 96ddc45d-3e26-4e07-a830-20487878c8a2
+      [6] Deal Closed (Buyer)
+           ID: 6859cce0-15c1-40e9-b217-73fe30e7f4c4
+      [7] Wrong Number (Buyer)
+           ID: de3aebfb-1131-4e27-a189-aceec2409681
+      [8] Lost (Buyer)
+           ID: f9635b71-3904-442e-bb45-d09800003f43
+
+  Pipeline: JOINT VENTURE
+    ID: OYjpAaaAIb254Iz09dCV
+    Stages:
+      [0] New Lead
+           ID: a0812722-f1d0-40d4-bd0b-a4ea053dd83d
+      [1] Lead Qualified
+           ID: 28b09cca-44ff-4574-ade2-8c8e7e9ff2f9
+      [2] JV Agreement Sent 
+           ID: b7cc7bf8-36cb-4821-9920-2d4e7b47dd4b
+      [3] Under Contract
+           ID: c18a7910-8c36-4b47-8e71-dec26581f660
+      [4] Sent To Title 
+           ID: 0f032076-8e82-4097-bc2c-ee8a2c26f119
+      [5] Sent To Buyers
+           ID: 6796d289-1a52-4251-92f9-15bb533170e3
+      [6] Assigned
+           ID: 6f95f3bd-bfb5-4947-9a1a-dfab3ecc9bed
+      [7] Pending Closed
+           ID: 19dc5bd1-b42c-45e3-8d52-d5bc36f9f074
+      [8] Closed
+           ID: c215b2bd-5c01-4f4d-b59f-009ea90c0894
+
+  Pipeline: Real Estate Agent Pipeline
+    ID: 2O3zK1KA4H4WuVKfruMK
+    Stages:
+      [0] Replied
+           ID: d41cfea7-19a1-46c9-af73-23d368fbfe6e
+
+  Pipeline: Seller Lead Pipeline
+    ID: MOhZEargjKG89XAVg39S
+    Stages:
+      [0] Replied
+           ID: 705b4d0d-bb69-499e-8f97-b68d9e9bf7e6
+      [1] Attention
+           ID: 1927b46f-b477-4a51-bee5-0c8a3f360857
+      [2] Interested / Prequalify
+           ID: 532007be-ca57-49b2-a77a-4ad01ce5fef5
+      [3] Replied Positive / Owner Confirmed
+           ID: b018025c-23a0-4cfe-8a8c-ae2bb707bf92
+      [4] Missed Call
+           ID: 8ffef227-60b0-4189-9997-c97037eb3bad
+      [5] Not Now
+           ID: a122e60c-67a7-4cfe-a34b-d592f2947872
+      [6] Has a Buyer
+           ID: 2a01b53b-202a-4638-a769-c78f51cdc40b
+      [7] Listed / Has a Realtor
+           ID: dbaef79c-6639-45b7-9429-d8d421e3e8a2
+      [8] Sold
+           ID: b58af51f-18f7-4b23-9971-7c7b92bd9420
+      [9] Cold / Not interested
+           ID: 4769520b-285e-4653-bc08-15528e140b15
+      [10] Wrong Number
+           ID: 734a7535-2646-4036-b91f-385adf04c868
+      [11] DNC
+           ID: dfc8ec44-0b9b-41c4-8794-09d2c31bcb3a
+
+  Pipeline: Transaction Coordination Pipeline
+    ID: Sl02PSRzpLheclGU4eaP
+    Stages:
+      [0] Send Contract To Title
+           ID: 9e6b2c23-b0f5-449c-ae91-4f36cab33e1b
+      [1] Title Work Pending
+           ID: 97dcf6bc-3613-4b44-b2db-9c518e3c769b
+      [2] Clear To Close
+           ID: 7f77eb9e-9aac-4cf1-b9ce-53ee72102363
+      [3] Tittle Issue
+           ID: 6250e709-e50b-4b8b-9a28-ef03be99ba21
+
+────────────────────────────────────────────────────────────
+Add these to your GitHub secrets:
+  GHL_PIPELINE_ID = <id of 'Acquisitions Pipeline'>
+  GHL_STAGE_ID    = <id of 'Hot Lead' stage>
