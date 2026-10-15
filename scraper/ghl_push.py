@@ -8,7 +8,7 @@ Env vars required:
   GHL_API_KEY      — Private Integration Token
   GHL_LOCATION_ID  — Sub-account Location ID
   GHL_PIPELINE_ID  — Pipeline ID (auto-discovered on first run)
-  GHL_STAGE_ID     — Stage ID for "Hot Lead" (auto-discovered on first run)
+  GHL_STAGE_ID     — Stage ID for "Left Voicemail/FU" (auto-discovered on first run)
 
 Run with --discover to print pipeline/stage IDs and exit.
 """
@@ -151,7 +151,7 @@ def discover_ids():
     print("─" * 60)
     print("Add these to your GitHub secrets:")
     print(f"  GHL_PIPELINE_ID = <id of 'Acquisitions Pipeline'>")
-    print(f"  GHL_STAGE_ID    = <id of 'Hot Lead' stage>")
+    print(f"  GHL_STAGE_ID    = <id of 'Left Voivemail/FU' stage>")
 
 
 # ── Contact helpers ───────────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ def create_or_update_contact(r):
 
 
 def create_opportunity(contact_id, r):
-    """Create an opportunity in Acquisitions Pipeline → Hot Lead stage."""
+    """Create an opportunity in Acquisitions Pipeline → Left Voicemail/FU stage."""
     prop = r.get("prop_address") or f"{r.get('last','')} Property"
     name = f"{r.get('last','')}, {r.get('first','')} — {prop}"
 
