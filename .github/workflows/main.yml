@@ -6,14 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       lookback_days:
-        description: 'How many days back to scrape (default 90)'
+        description: 'How many days back to scrape (default 7)'
         required: false
-        default: '90'
+        default: '7'
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: "scrape"
@@ -22,7 +20,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -63,18 +61,3 @@ jobs:
           git diff --cached --quiet || git commit -m "leads: $(date -u +%Y-%m-%d)"
           git push origin main || (git pull --rebase origin main && git push origin main)
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dashboard/
-
-  deploy:
-    needs: scrape
-    runs-on: ubuntu-22.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

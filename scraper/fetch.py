@@ -19,7 +19,7 @@ except ImportError:
     HAS_DBF = False
 
 CLERK_BASE    = "https://bexar.tx.publicsearch.us"
-LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "90"))
+LOOKBACK_DAYS = int(os.environ.get("LOOKBACK_DAYS", "7"))
 SHEET_ID      = "1mC-bTqyRB-VHlLdNCzCfkaPRAq0TsLYSc93JhjbiVJk"
 SHEET_NAME    = "Sheet1"
 
@@ -427,7 +427,7 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
                 print(f"  Sample types seen: {dict(raw_types.most_common(10))}")
             print(f"  Page 1: {len(html_recs)} records")
             page_num=2
-            while page_num<=200:
+            while page_num<=5:  # safety cap — 5 pages max per doc type (~250 records)
                 nxt=None
                 for ns in [
                     "button[aria-label*='next' i]:not([disabled])",
