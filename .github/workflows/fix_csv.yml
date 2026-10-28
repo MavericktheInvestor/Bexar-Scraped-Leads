@@ -1,0 +1,48 @@
+name: Fix CSV Placeholder Bug
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "fix-csv"
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore old CSV and append new leads
+        run: |
+          # Restore 909-record CSV from before the placeholder bug
+          git show 857edbb2dc22d50bd79c62b365c601b819afa7e9:data/dm_fresh_leads.csv > data/dm_fresh_leads.csv
+          echo "Restored old CSV: $(wc -l < data/dm_fresh_leads.csv) lines"
+
+          # Append new leads (skip headers)
+          tail -n +2 data/new_leads_part1.csv >> data/dm_fresh_leads.csv
+          tail -n +2 data/new_leads_part2.csv >> data/dm_fresh_leads.csv
+          tail -n +2 data/new_leads_part3.csv >> data/dm_fresh_leads.csv
+
+          TOTAL=$(wc -l < data/dm_fresh_leads.csv)
+          echo "Combined CSV: $TOTAL lines (header + $((TOTAL - 1)) records)"
+
+          # Remove temp part files
+          rm -f data/new_leads_part1.csv data/new_leads_part2.csv data/new_leads_part3.csv
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/dm_fresh_leads.csv
+          git rm --cached data/new_leads_part1.csv data/new_leads_part2.csv data/new_leads_part3.csv 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "fix: dm_fresh_leads.csv restored — 1357 records (2026-10-28)"
+          git push origin main || (git pull --rebase origin main && git push origin main)
