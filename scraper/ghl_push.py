@@ -228,48 +228,24 @@ def build_contact(r):
     return body
 
 
-def find_existing_contact(first, last):
-    """Search GHL for an existing contact by name."""
-    try:
-        q = f"{first} {last}".strip()
-        data = ghl_get("/contacts/search", {
-            "locationId": GHL_LOCATION_ID,
-            "query": q,
-            "limit": 5,
-        })
-        contacts = data.get("contacts", [])
-        for c in contacts:
-            fn = (c.get("firstName") or "").strip().lower()
-            ln = (c.get("lastName") or "").strip().lower()
-            if fn == first.lower() and ln == last.lower():
-                return c["id"]
-    except Exception:
-        pass
-    return None
-
-
 def create_or_update_contact(r):
-    """Create contact, or update tags if already exists."""
-    existing_id = find_existing_contact(r.get("first",""), r.get("last",""))
+    """Create contact in GHL. If a duplicate is returned, extract the existing ID."""
     body = build_contact(r)
-
-    if existing_id:
-        # Update tags only — don't overwrite existing data
-        try:
-            result, status = ghl_put(f"/contacts/{existing_id}", {
-                "locationId": GHL_LOCATION_ID,
-                "tags": body.get("tags", []),
-            })
-            return existing_id, "updated"
-        except Exception as e:
-            print(f"    ⚠  Update failed: {e}")
-            return existing_id, "update_failed"
-    else:
-        print(f"    → POST /contacts/ body: {json.dumps({k:v for k,v in body.items() if k != 'customFields'})}")
+    try:
         result, status = ghl_post("/contacts/", body)
-        print(f"    ← Response ({status}): {json.dumps(result)[:300]}")
         contact_id = result.get("contact", {}).get("id") or result.get("id", "")
         return contact_id, "created"
+    except RuntimeError as e:
+        err_str = str(e)
+        # GHL returns 409 or 422 with existing contact ID when duplicate
+        # Try to extract the contact ID from the error body
+        id_match = re.search(r'"id"\s*:\s*"([a-zA-Z0-9]+)"', err_str)
+        if id_match:
+            return id_match.group(1), "updated"
+        # If we can't get the ID, just skip — don't double-spend on a search
+        if "409" in err_str or "already exists" in err_str.lower() or "duplicate" in err_str.lower():
+            return None, "duplicate_skip"
+        raise
 
 
 def create_opportunity(contact_id, r):
@@ -401,7 +377,10 @@ def main():
                 errors += 1
                 continue
 
-            if action == "created":
+            if action == "duplicate_skip":
+                skipped += 1
+                continue
+            elif action == "created":
                 opp_id = create_opportunity(contact_id, r)
                 created += 1
                 if i <= 10 or i % 50 == 0:
