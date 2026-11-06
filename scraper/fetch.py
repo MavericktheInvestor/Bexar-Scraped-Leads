@@ -798,6 +798,36 @@ async def main():
     motivated.sort(key=lambda x:x["score"],reverse=True)
     print(f"  ✅ After owner merge: {len(motivated)} unique owners")
 
+    # ── Institutional lender / government exclusion ───────────────────────────
+    # These are lenders, servicers, credit unions, and agencies that appear on
+    # tax delinquency filings as the creditor — NOT motivated sellers. Drop them.
+    INSTITUTION_KEYWORDS = (
+        "BANK", "MORTGAGE", "LENDING", "LENDER", "FINANCIAL", "FINANCE",
+        "CREDIT UNION", "FEDERAL CREDIT", "FEDERAL SAVINGS",
+        "FEDERAL RESERVE", "FEDERAL DEPOSIT",
+        "FANNIE MAE", "FREDDIE MAC", "GINNIE MAE",
+        "HOUSING AND URBAN DEVELOPMENT", "HUD", "FHA", "VA LOAN",
+        "SECRETARY OF", "DEPARTMENT OF", "UNITED STATES OF AMERICA",
+        "INTERNAL REVENUE", "IRS", "COMPTROLLER",
+        "WELLS FARGO", "JPMORGAN", "CHASE BANK", "BANK OF AMERICA",
+        "CITIBANK", "CITIGROUP", "US BANK", "USBANK",
+        "ROCKET MORTGAGE", "QUICKEN LOAN", "PENNYMAC", "NEWREZ",
+        "LOANCARE", "NATIONSTAR", "MR. COOPER", "MR COOPER",
+        "SELENE FINANCE", "OCWEN", "PHH MORTGAGE", "SPECIALIZED LOAN",
+        "ELECTRONIC REGISTRATION SYSTEMS", "MERS",
+        "RANDOLPH-BROOKS", "BROADWAY BANK", "FROST BANK",
+        "SECURITY STATE BANK", "GENERATIONS COMMUNITY",
+        "TRUSTMARK", "AMERIPRISE", "AMERITAS",
+    )
+    before_institution_filter = len(motivated)
+    motivated = [
+        r for r in motivated
+        if not any(k in (r.get("owner") or "").upper() for k in INSTITUTION_KEYWORDS)
+    ]
+    dropped = before_institution_filter - len(motivated)
+    if dropped:
+        print(f"  🏦 Filtered out {dropped} institutional/lender records")
+
     # ── Business / LLC filter ─────────────────────────────────────────────────
     # Tag corp-owned records — excluded from skip trace queue but kept in sheet
     BUSINESS_KEYWORDS = ("LLC","INC","CORP","LTD","TRUST","LP ","L.P.","ASSOC",
