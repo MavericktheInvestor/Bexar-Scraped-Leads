@@ -45,7 +45,7 @@ class Button:
 
 
 class Page:
-    def __init__(self, total, navigation_error=False, repeat=False, selector_error=False, loading=False, empty=False):
+    def __init__(self, total, navigation_error=False, repeat=False, selector_error=False, loading=False, empty=False, hidden_loading=False):
         self.total = total
         self.number = 1
         self.visited = [1]
@@ -54,6 +54,7 @@ class Page:
         self.selector_error = selector_error
         self.loading = loading
         self.empty = empty
+        self.hidden_loading = hidden_loading
 
     def on(self, *_):
         pass
@@ -72,7 +73,10 @@ class Page:
             return ""
         if self.number > 1 and self.loading:
             return "loading results"
-        return str(1 if self.repeat else self.number)
+        return str(1 if self.repeat else self.number) + ('<script>loading</script>' if self.hidden_loading else '')
+
+    async def inner_text(self, selector):
+        return (await self.content()).split('<')[0]
 
     def get_by_role(self, *args, **kwargs):
         return types.SimpleNamespace(count=self.zero)
@@ -123,7 +127,7 @@ def scrape(page):
         "asyncio": types.SimpleNamespace(sleep=no_sleep), "re": re,
         "BeautifulSoup": lambda *_: types.SimpleNamespace(find_all=lambda *_: []),
         "CLERK_BASE": "https://fixture.invalid", "PROXY_USER": "", "PROXY_PASS": "",
-        "parse_html": lambda html, **kwargs: [{"doc_num": html}] if html else [],
+        "parse_html": lambda html, **kwargs: [{"doc_num": html.split('<')[0]}] if html else [],
         "_api_row": lambda row: row, "_items": lambda body: body,
     }
     function = load_function("playwright_scrape", namespace)
@@ -201,6 +205,10 @@ class MainCompletionTests(unittest.TestCase):
 
 
 class PaginationTests(unittest.TestCase):
+    def test_script_loading_strings_do_not_block_loaded_results(self):
+        page = Page(6, hidden_loading=True)
+        self.assertEqual([r['doc_num'] for r in scrape(page)], [str(n) for n in range(1, 7)])
+
     def test_visits_page_six_instead_of_returning_partial_results(self):
         page = Page(6)
         records = scrape(page)
