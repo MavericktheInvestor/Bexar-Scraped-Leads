@@ -59,6 +59,7 @@ jobs:
           dashboard = Path('dashboard')
           assert (dashboard / 'index.html').is_file(), 'Missing dashboard HTML'
           data = json.loads((dashboard / 'records.json').read_text())
+          assert data.get('scrape_complete') is True, 'Refusing to publish unverified or partial scraper output'
           assert isinstance(data.get('records'), list), 'Missing records list'
           assert data.get('fetched_at'), 'Missing scraper timestamp'
           assert data['total'] == len(data['records']), 'Record count mismatch'

@@ -24,6 +24,8 @@ class PagesWorkflowTests(unittest.TestCase):
         self.assertEqual(job['permissions']['id-token'], 'write')
         self.assertEqual(job['environment']['name'], 'github-pages')
         steps = job['steps']
+        validation = next(s['run'] for s in steps if s.get('name') == 'Validate dashboard data')
+        self.assertIn("data.get('scrape_complete') is True", validation)
         checkout = next(s for s in steps if s.get('uses', '').startswith('actions/checkout@'))
         self.assertEqual(checkout['with']['ref'], 'main')
         upload = next(s for s in steps if s.get('uses', '').startswith('actions/upload-pages-artifact@'))
