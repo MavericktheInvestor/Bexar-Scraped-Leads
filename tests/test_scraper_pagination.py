@@ -2,7 +2,7 @@
 import ast
 import asyncio
 from contextlib import redirect_stdout, redirect_stderr
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import json
 from pathlib import Path
@@ -151,10 +151,13 @@ class MainHarness:
             self.calls.append(args)
             if error:
                 raise error
+            if callable(result):
+                return result(len(self.calls))
             return result or []
 
         self.namespace = {
-            "datetime": types.SimpleNamespace(utcnow=lambda: datetime(2026, 1, 7)),
+            "datetime": types.SimpleNamespace(utcnow=lambda: datetime(2026, 1, 7), strptime=datetime.strptime),
+            "timedelta": timedelta,
             "re": re, "json": json,
             "date_range_mm": lambda: ("01/01/2026", "01/07/2026"),
             "date_range_iso": lambda: ("2026-01-01", "2026-01-07"),
@@ -175,6 +178,33 @@ class MainHarness:
 
 
 class MainCompletionTests(unittest.TestCase):
+    def test_large_lookback_is_collected_in_seven_day_windows(self):
+        harness = MainHarness(result=[{
+            "doc_num": "123456", "doc_type": "NOFC", "owner": "Jane Doe",
+            "filed": "2026-01-02", "is_motivated": True,
+        }])
+        harness.namespace['date_range_iso'] = lambda: ('2026-01-01', '2026-01-16')
+        harness.run()
+        self.assertEqual([(c[0], c[1], c[2]) for c in harness.calls], [
+            ('01/01/2026', '01/07/2026', '2026-01-01'),
+            ('01/08/2026', '01/14/2026', '2026-01-08'),
+            ('01/15/2026', '01/16/2026', '2026-01-15'),
+        ])
+        self.assertEqual(json.loads(harness.writes[0])['total'], 1)
+        self.assertEqual(json.loads(harness.writes[0])['data_range'], '2026-01-01 to 2026-01-16')
+
+    def test_failed_later_window_does_not_export_earlier_windows(self):
+        def result(call):
+            if call > 1:
+                raise RuntimeError('later window incomplete')
+            return [{'doc_num': '1'}]
+        harness = MainHarness(result=result)
+        harness.namespace['date_range_iso'] = lambda: ('2026-01-01', '2026-01-16')
+        with self.assertRaisesRegex(RuntimeError, 'later window incomplete'):
+            harness.run()
+        self.assertEqual(harness.writes, [])
+        self.assertEqual(harness.exports, [])
+
     def test_all_sources_empty_raises_before_any_exports(self):
         harness = MainHarness()
         with self.assertRaisesRegex(RuntimeError, "No complete scrape"):
