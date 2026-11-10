@@ -426,8 +426,9 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
                 raw_types=Counter(r.get("raw_type","?") for r in html_recs[:100])
                 print(f"  Sample types seen: {dict(raw_types.most_common(10))}")
             print(f"  Page 1: {len(html_recs)} records")
+            seen_pages={frozenset(r["doc_num"] for r in (html_recs or all_recs))}
             page_num=2
-            while page_num<=5:  # safety cap — 5 pages max per doc type (~250 records)
+            while True:
                 nxt=None
                 for ns in [
                     "button[aria-label*='next' i]:not([disabled])",
@@ -435,34 +436,45 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
                     "li.next:not(.disabled) a",
                     "button:has-text('›'):not([disabled])",
                 ]:
-                    try:
-                        el=await page.query_selector(ns)
-                        if el and await el.is_visible():
-                            dis=await el.get_attribute("disabled")
-                            ard=await el.get_attribute("aria-disabled")
-                            cls=await el.get_attribute("class") or ""
-                            if not dis and ard!="true" and "disabled" not in cls:
-                                nxt=el; break
-                    except Exception: pass
+                    el=await page.query_selector(ns)
+                    if el and await el.is_visible():
+                        dis=await el.get_attribute("disabled")
+                        ard=await el.get_attribute("aria-disabled")
+                        cls=await el.get_attribute("class") or ""
+                        if not dis and ard!="true" and "disabled" not in cls:
+                            nxt=el; break
                 if not nxt: print(f"  ✅ Done — {page_num-1} pages"); break
+                if page_num>2000:
+                    raise RuntimeError("Pagination exceeded 2000 pages with Next still available")
                 captured.clear()
                 await nxt.click(); await asyncio.sleep(2)
                 for _ in range(15):
                     h=await page.content()
                     if not re.search(r"loading|please wait",h,re.I): break
                     await asyncio.sleep(1)
+                else:
+                    raise RuntimeError(f"Pagination page {page_num} is still loading")
+                page_recs=[]
                 for items in captured:
                     for row in items:
                         if isinstance(row,dict):
                             rec=_api_row(row)
-                            if rec: all_recs.append(rec)
+                            if rec: page_recs.append(rec)
                 more=parse_html(await page.content())
+                fingerprint=frozenset(r["doc_num"] for r in (more or page_recs))
+                if not fingerprint:
+                    raise RuntimeError(f"No documents after navigating to page {page_num}")
+                if fingerprint in seen_pages:
+                    raise RuntimeError(f"Repeated document page at page {page_num}")
+                seen_pages.add(fingerprint)
+                all_recs.extend(page_recs)
                 all_recs.extend(more)
                 if page_num%10==0: print(f"  Page {page_num}: {len(all_recs)}")
                 page_num+=1
         except Exception as e:
             print(f"\n  ✗ {e}")
             import traceback; traceback.print_exc()
+            raise
         finally:
             await browser.close()
     return all_recs
@@ -717,6 +729,9 @@ async def main():
         if recs: all_recs=recs; print(f"  ✅ {len(recs)} raw records"); break
         else: print("  ✗ Trying next …")
 
+    if not all_recs:
+        raise RuntimeError("No complete scrape returned records; refusing to export")
+
     # Dedup
     seen=set(); unique=[]
     for r in all_recs:
@@ -865,6 +880,7 @@ async def main():
 
     # Save
     payload={
+        "scrape_complete": True,
         "fetched_at":   datetime.utcnow().isoformat()+"Z",
         "source":       "Bexar County Clerk / BCAD",
         "data_range":   f"{s_iso} to {e_iso}",
