@@ -724,11 +724,29 @@ async def main():
     else:
         proxies_to_try=[(None,None)]
 
-    for ph,pp in proxies_to_try:
-        print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct'} …")
-        recs=await playwright_scrape(s_mm,e_mm,s_iso,ph,pp)
-        if recs: all_recs=recs; print(f"  ✅ {len(recs)} raw records"); break
-        else: print("  ✗ Trying next …")
+    # Keep individual searches below the portal's observed 10,000-result ceiling.
+    # Finish every window before exporting any part of the requested lookback.
+    cursor=datetime.strptime(s_iso,"%Y-%m-%d")
+    last_day=datetime.strptime(e_iso,"%Y-%m-%d")
+    while cursor<=last_day:
+        window_end=min(cursor+timedelta(days=6),last_day)
+        window_start_iso=cursor.strftime("%Y-%m-%d")
+        print(f"\n📅 Collecting window: {window_start_iso} → {window_end:%Y-%m-%d}")
+        window_recs=[]
+        for ph,pp in proxies_to_try:
+            print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct'} …")
+            recs=await playwright_scrape(cursor.strftime("%m/%d/%Y"),
+                window_end.strftime("%m/%d/%Y"),window_start_iso,ph,pp)
+            if recs:
+                window_recs=recs
+                print(f"  ✅ {len(recs)} raw records")
+                break
+            print("  ✗ Trying next …")
+        if not window_recs:
+            raise RuntimeError(f"No complete scrape for window {window_start_iso}; refusing to export")
+        all_recs.extend(window_recs)
+        cursor=window_end+timedelta(days=1)
+
 
     if not all_recs:
         raise RuntimeError("No complete scrape returned records; refusing to export")
