@@ -449,7 +449,8 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
                 captured.clear()
                 await nxt.click(); await asyncio.sleep(2)
                 for _ in range(15):
-                    h=await page.content()
+                    # Inspect rendered text, not scripts/styles containing the word loading.
+                    h=await page.inner_text("body")
                     if not re.search(r"loading|please wait",h,re.I): break
                     await asyncio.sleep(1)
                 else:
