@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -30,11 +30,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      pages: read
     steps:
       # The producer commits with GITHUB_TOKEN, which does not trigger push
       # workflows. workflow_run above explicitly bridges that publishing gap.
@@ -71,6 +67,18 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: dashboard/
+  deploy:
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy dashboard
         id: deployment
         uses: actions/deploy-pages@v5
