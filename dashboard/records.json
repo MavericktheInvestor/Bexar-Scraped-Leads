@@ -1,8 +1,8 @@
 {
   "scrape_complete": true,
-  "fetched_at": "2026-11-14T18:41:16.076763Z",
+  "fetched_at": "2026-11-15T19:32:28.289270Z",
   "source": "Bexar County Clerk / BCAD",
-  "data_range": "2026-08-16 to 2026-11-14",
+  "data_range": "2026-08-17 to 2026-11-15",
   "total": 5717,
   "with_address": 3545,
   "records": [
