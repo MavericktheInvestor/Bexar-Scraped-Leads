@@ -90,9 +90,10 @@ def load_county_leads():
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
         for row in csv.DictReader(f):
             try:
-                score = int(float(row.get("Seller Score", 0) or 0))
-            except (ValueError, TypeError):
-                score = 0
+                score = int(float(row.get("Seller Score") or ""))
+            except (ValueError, TypeError, OverflowError):
+                # Missing/non-finite/malformed scores remain unknown, not zero.
+                continue
             if score < SCORE_THRESHOLD:
                 continue
             first = row.get("First Name", "").strip()
@@ -131,9 +132,10 @@ def load_inmate_matches():
     with open(path, newline="", encoding="utf-8-sig", errors="replace") as f:
         for row in csv.DictReader(f):
             try:
-                score = int(float(row.get("Inmate Score", 0) or 0))
-            except (ValueError, TypeError):
-                score = 0
+                score = int(float(row.get("Inmate Score") or ""))
+            except (ValueError, TypeError, OverflowError):
+                # Missing/non-finite/malformed scores remain unknown, not zero.
+                continue
             if score < SCORE_THRESHOLD:
                 continue
             first = row.get("First Name", "").strip()

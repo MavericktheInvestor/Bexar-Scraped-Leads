@@ -733,16 +733,26 @@ async def main():
         window_start_iso=cursor.strftime("%Y-%m-%d")
         print(f"\n📅 Collecting window: {window_start_iso} → {window_end:%Y-%m-%d}")
         window_recs=[]
+        last_error=None
         for ph,pp in proxies_to_try:
             print(f"\n🏛  Scraping via {'proxy '+ph if ph else 'direct'} …")
-            recs=await playwright_scrape(cursor.strftime("%m/%d/%Y"),
-                window_end.strftime("%m/%d/%Y"),window_start_iso,ph,pp)
+            try:
+                recs=await playwright_scrape(cursor.strftime("%m/%d/%Y"),
+                    window_end.strftime("%m/%d/%Y"),window_start_iso,ph,pp)
+            except Exception as exc:
+                # Failed attempts never return partial records. Restart this
+                # entire window on the next configured route, not the next page.
+                last_error=exc
+                print(f"  ✗ Incomplete window ({type(exc).__name__}); trying next …")
+                continue
             if recs:
                 window_recs=recs
                 print(f"  ✅ {len(recs)} raw records")
                 break
             print("  ✗ Trying next …")
         if not window_recs:
+            if last_error is not None:
+                raise last_error
             raise RuntimeError(f"No complete scrape for window {window_start_iso}; refusing to export")
         all_recs.extend(window_recs)
         cursor=window_end+timedelta(days=1)
