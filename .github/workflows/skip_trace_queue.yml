@@ -25,6 +25,13 @@ concurrency:
 
 jobs:
   build-queue:
+    # A failed scrape intentionally leaves the last complete export untouched.
+    # Do not rebuild/publish that stale snapshot as a successful new collection.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-22.04
     timeout-minutes: 10
 
@@ -32,6 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Set up Python 3.11
