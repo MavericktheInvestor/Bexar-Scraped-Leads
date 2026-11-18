@@ -3,6 +3,11 @@ GHL Cleanup — delete contacts with no phone number.
 Reads all contacts in the location, deletes any without a phone.
 """
 import json, os, sys, time, urllib.request, urllib.parse, urllib.error
+from pathlib import Path
+from scored_retention import load_claims, partition
+
+def load_retention_claims():
+    return load_claims(Path(__file__).resolve().parents[1] / 'data')
 
 GHL_API_KEY  = os.environ["GHL_API_KEY"]
 LOCATION_ID  = os.environ["GHL_LOCATION_ID"]
@@ -50,48 +55,48 @@ def ghl_delete(path):
         raise
 
 def get_all_contacts():
-    contacts = []
-    page = 1
-    after = None
-    after_id = None
+    """Validate the entire paginated snapshot before any deletion is considered."""
+    contacts, seen_ids, seen_cursors = [], set(), set()
+    expected_total = None
+    cursor = None
     while True:
         params = {"locationId": LOCATION_ID, "limit": 100}
-        if after:
-            params["startAfter"] = after
-        if after_id:
-            params["startAfterId"] = after_id
-
+        if cursor is not None:
+            params.update(startAfter=cursor[0], startAfterId=cursor[1])
         data = ghl_get("/contacts/", params)
-
-        # Debug: show top-level keys
-        if page == 1:
-            print(f"  Response keys: {list(data.keys())}", flush=True)
-            meta = data.get("meta", {})
-            print(f"  Meta: {meta}", flush=True)
-
-        batch = data.get("contacts", [])
-        if not batch:
-            print("  No more contacts in batch, stopping.", flush=True)
-            break
+        if not isinstance(data, dict) or not isinstance(data.get('contacts'), list) or not isinstance(data.get('meta'), dict):
+            raise ValueError('Malformed contact pagination response')
+        batch, meta = data['contacts'], data['meta']
+        total = meta.get('total')
+        if type(total) is not int or total < 0:
+            raise ValueError('Pagination total missing or invalid')
+        if expected_total is None:
+            expected_total = total
+        if total != expected_total:
+            raise ValueError('Contact total changed during pagination; retry a stable snapshot')
+        for contact in batch:
+            cid = contact.get('id') if isinstance(contact, dict) else None
+            if not isinstance(cid, str) or not cid or cid in seen_ids:
+                raise ValueError('Missing/duplicate contact ID during pagination')
+            seen_ids.add(cid)
         contacts.extend(batch)
-
-        meta = data.get("meta", {})
-        after    = meta.get("startAfter")
-        after_id = meta.get("startAfterId")
-        total    = meta.get("total", "?")
-
-        print(f"  Page {page}: fetched {len(batch)}, total so far: {len(contacts)} / {total}", flush=True)
-        page += 1
-
-        if not after and not after_id:
-            break
+        if len(contacts) > expected_total:
+            raise ValueError('Contact count exceeds advertised total')
+        print(f"  Fetched {len(contacts)} / {expected_total}", flush=True)
+        if len(contacts) == expected_total:
+            return contacts
+        if not batch:
+            raise ValueError('Empty page before advertised contact total')
+        cursor = (meta.get('startAfter'), meta.get('startAfterId'))
+        if not isinstance(cursor[0], (str, int)) or isinstance(cursor[0], bool) or not isinstance(cursor[1], str) or not cursor[1] or cursor in seen_cursors:
+            raise ValueError('Missing/invalid/repeated pagination cursor before total')
+        seen_cursors.add(cursor)
         time.sleep(0.3)
-    return contacts
 
 def main():
     print(f"{'🔍 DRY RUN — no deletions' if DRY_RUN else '🗑  LIVE — will delete'}", flush=True)
     print(f"Location: {LOCATION_ID}", flush=True)
-    print(f"API key prefix: {GHL_API_KEY[:10]}...", flush=True)
+    # Never print credentials or partial credentials.
     print()
 
     print("Fetching all contacts…", flush=True)
@@ -103,9 +108,15 @@ def main():
 
     print(f"\nTotal contacts fetched: {len(all_contacts)}", flush=True)
 
-    no_phone = [c for c in all_contacts if not (c.get("phone") or "").strip()]
-    print(f"Contacts without phone: {len(no_phone)}", flush=True)
-    print(f"Contacts with phone:    {len(all_contacts) - len(no_phone)}", flush=True)
+    # Preserve source-verified scored prospects; hold ambiguous prior metadata.
+    # Missing/malformed evidence raises before the first DELETE, never falls back.
+    claims = load_retention_claims()
+    decision = partition(all_contacts, claims, LOCATION_ID)
+    no_phone = decision['delete_candidates']
+    print(f"Protected scored prospects: {len(decision['protected_scored'])}", flush=True)
+    print(f"Scored/property prospects held for review: {len(decision['review_held'])}", flush=True)
+    print(f"Contacts without phone eligible for cleanup: {len(no_phone)}", flush=True)
+    print(f"Contacts with phone:    {sum(bool((c.get('phone') or '').strip()) for c in all_contacts)}", flush=True)
     print()
 
     if not no_phone:
