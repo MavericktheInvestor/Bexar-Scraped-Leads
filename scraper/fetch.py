@@ -374,12 +374,26 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
             except Exception: pass
         page.on("response",on_resp)
         try:
-            await page.goto(CLERK_BASE,timeout=60000)
-            await page.wait_for_load_state("networkidle",timeout=30000)
-            await asyncio.sleep(3)
-            body_text=await page.content()
-            if "host not" in body_text.lower():
-                print("  ✗ Portal blocked"); return []
+            await page.goto(CLERK_BASE,timeout=60000,wait_until="domcontentloaded")
+            # Network silence is not search readiness: analytics/challenges may
+            # keep requests active. Require the actual bounded-search controls.
+            for _ in range(30):
+                visible_text=await page.inner_text("body")
+                if re.search(r"performing security verification|verify you are (?:a human|not a bot)|"
+                             r"security service to protect against malicious bots|access denied|host not",
+                             visible_text,re.I):
+                    raise RuntimeError("County portal access blocked: security verification or access denial; "
+                                       "refusing collection (no bypass attempted)")
+                date_inputs=await page.query_selector_all(".react-datepicker__input")
+                search=await page.query_selector("button[type='submit']")
+                if len(date_inputs)==2 and search:
+                    ready=await search.is_visible() and await search.is_enabled()
+                    for field in date_inputs:
+                        ready=ready and await field.is_visible() and await field.is_editable()
+                    if ready: break
+                await asyncio.sleep(1)
+            else:
+                raise RuntimeError("County search form not ready; refusing unbounded collection")
             print(f"  ✅ {await page.title()}")
             for txt in ["Close","Accept","I Agree","Continue","OK"]:
                 try:
@@ -389,20 +403,19 @@ async def playwright_scrape(start_mm,end_mm,start_iso,proxy_host,proxy_port):
                         print(f"  ✅ Dismissed: {txt}"); break
                 except Exception: pass
             date_inputs=await page.query_selector_all(".react-datepicker__input")
-            if len(date_inputs)>=2:
-                for di,val in [(0,start_mm),(1,end_mm)]:
-                    await date_inputs[di].click()
-                    await page.keyboard.press("Control+a")
-                    await page.keyboard.press("Delete")
-                    await date_inputs[di].fill(val)
-                    await asyncio.sleep(0.5)
-                    await page.keyboard.press("Escape")
-                print(f"  ✅ Dates: {start_mm} → {end_mm}")
-            for sel in ["button[type='submit']","button:has-text('Search')"]:
-                try:
-                    el=await page.query_selector(sel)
-                    if el and await el.is_visible(): await el.click(); break
-                except Exception: pass
+            if len(date_inputs)!=2:
+                raise RuntimeError("County date controls disappeared; refusing unbounded collection")
+            for di,val in [(0,start_mm),(1,end_mm)]:
+                await date_inputs[di].click()
+                await page.keyboard.press("Control+a")
+                await page.keyboard.press("Delete")
+                await date_inputs[di].fill(val)
+                await asyncio.sleep(0.5)
+                await page.keyboard.press("Escape")
+            print(f"  ✅ Dates: {start_mm} → {end_mm}")
+            # Submit the control whose readiness was validated; never swallow
+            # click failures and mistake stale/default results for this window.
+            await search.click()
             await asyncio.sleep(5)
             for _ in range(30):
                 html=await page.content()
