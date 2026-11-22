@@ -44,6 +44,34 @@ class Button:
         self.page.visited.append(self.page.number)
 
 
+class DateInput:
+    def __init__(self):
+        self.value = ''
+
+    async def is_visible(self):
+        return True
+
+    async def is_editable(self):
+        return True
+
+    async def click(self):
+        pass
+
+    async def fill(self, value):
+        self.value = value
+
+
+class SearchButton:
+    async def is_visible(self):
+        return True
+
+    async def is_enabled(self) -> bool:
+        return True
+
+    async def click(self):
+        pass
+
+
 class Page:
     def __init__(self, total, navigation_error=False, repeat=False, selector_error=False, loading=False, empty=False, hidden_loading=False):
         self.total = total
@@ -55,6 +83,8 @@ class Page:
         self.loading = loading
         self.empty = empty
         self.hidden_loading = hidden_loading
+        self.dates = [DateInput(), DateInput()]
+        self.keyboard = types.SimpleNamespace(press=no_sleep)
 
     def on(self, *_):
         pass
@@ -85,9 +115,11 @@ class Page:
         return 0
 
     async def query_selector_all(self, *_):
-        return []
+        return self.dates
 
     async def query_selector(self, selector):
+        if selector == "button[type='submit']":
+            return SearchButton()
         if self.selector_error and "next" in selector:
             raise RuntimeError("selector failed")
         if "aria-label*='next'" in selector and self.number < self.total:
@@ -251,6 +283,92 @@ class MainCompletionTests(unittest.TestCase):
 
 
 class PaginationTests(unittest.TestCase):
+    def test_disappearing_date_controls_fail_before_unbounded_search(self):
+        class DisappearingPage(Page):
+            reads = 0
+
+            async def query_selector_all(self, *_):
+                self.reads += 1
+                return self.dates if self.reads == 1 else []
+
+        with self.assertRaisesRegex(RuntimeError, 'date controls disappeared'):
+            scrape(DisappearingPage(1))
+
+    def test_missing_date_controls_never_collect_unbounded_rows(self):
+        class MissingDatesPage(Page):
+            async def query_selector_all(self, *_):
+                return []
+
+        with self.assertRaisesRegex(RuntimeError, 'search form not ready'):
+            scrape(MissingDatesPage(1))
+
+    def test_disabled_search_never_collects_stale_rows(self):
+        class DisabledSearch(SearchButton):
+            async def is_enabled(self):
+                return False
+
+        class DisabledPage(Page):
+            async def query_selector(self, selector):
+                if selector == "button[type='submit']":
+                    return DisabledSearch()
+                return await super().query_selector(selector)
+
+        with self.assertRaisesRegex(RuntimeError, 'search form not ready'):
+            scrape(DisabledPage(1))
+
+    def test_waits_for_delayed_form_render(self):
+        class DelayedPage(Page):
+            reads = 0
+
+            async def query_selector_all(self, *_):
+                self.reads += 1
+                return self.dates if self.reads >= 3 else []
+
+        page = DelayedPage(1)
+        self.assertEqual(scrape(page), [{'doc_num': '1'}])
+        self.assertGreaterEqual(page.reads, 3)
+
+    def test_hidden_security_script_does_not_block_ready_form(self):
+        class HiddenSecurityPage(Page):
+            async def content(self):
+                return (await super().content()) + '<script>Performing security verification</script>'
+
+        self.assertEqual(scrape(HiddenSecurityPage(1)), [{'doc_num': '1'}])
+
+    def test_failed_search_submission_does_not_collect_stale_rows(self):
+        class FailingSearch(SearchButton):
+            async def click(self):
+                raise RuntimeError('search submission failed')
+
+        class FailedSubmitPage(Page):
+            async def query_selector(self, selector):
+                if selector == "button[type='submit']":
+                    return FailingSearch()
+                return await super().query_selector(selector)
+
+        with self.assertRaisesRegex(RuntimeError, 'search submission failed'):
+            scrape(FailedSubmitPage(1))
+
+    def test_security_verification_is_reported_as_access_blocker(self):
+        class BlockedPage(Page):
+            async def inner_text(self, selector):
+                return 'Performing security verification. This website uses a security service to protect against malicious bots.'
+
+            async def query_selector_all(self, *_):
+                return []
+
+        with self.assertRaisesRegex(RuntimeError, 'access blocked.*security verification'):
+            scrape(BlockedPage(1))
+
+    def test_ready_form_collects_when_network_never_becomes_idle(self):
+        class BusyPage(Page):
+            async def wait_for_load_state(self, *args, **kwargs):
+                raise TimeoutError('background traffic never became idle')
+
+        page = BusyPage(6)
+        self.assertEqual([r['doc_num'] for r in scrape(page)], [str(n) for n in range(1, 7)])
+        self.assertEqual([d.value for d in page.dates], ['01/01/2026', '01/07/2026'])
+
     def test_script_loading_strings_do_not_block_loaded_results(self):
         page = Page(6, hidden_loading=True)
         self.assertEqual([r['doc_num'] for r in scrape(page)], [str(n) for n in range(1, 7)])
