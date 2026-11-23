@@ -53,6 +53,15 @@ uploads a sanitized JSON report even on a synchronization failure.
 
 * Match an existing master row by exact document identity, then require matching
   first/last name and property address (case/whitespace comparison only).
+  An exact reversal of first/last components is also accepted **only** for a
+  unique valid literal document identity, an exact nonblank property match, and
+  both name fields populated on both source and master. This narrowly handles
+  legacy First/Last values under Last/First headers; no fuzzy name matching,
+  token splitting, identity repair, or property relaxation is allowed. Direct
+  matching behavior is unchanged. Existing names, headers and row order are
+  never corrected or rewritten; only blank trace-result cells may be filled.
+  All source decisions, duplicate checks, manual holds and contact/status/date
+  conflicts below still apply to reversed-name matches.
   Missing master leads are reported as holds: no row reconstruction/insertion.
 * Require one destination row per identity. Differing nonblank primary/alternate
   phones or trace status/date hold the entire row. Equivalent US phone formatting
