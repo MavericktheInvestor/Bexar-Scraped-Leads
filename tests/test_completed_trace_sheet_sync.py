@@ -45,7 +45,7 @@ class PlanTests(unittest.TestCase):
                 self.assertEqual([], plan['changes'])
                 self.assertEqual({'master_owner_property_collision': 1}, plan['holds'])
 
-    def test_exact_name_swap_diagnostics_do_not_release_collision(self):
+    def test_exact_name_swap_allows_only_trace_additions_without_renaming(self):
         import hashlib
         chosen, _ = sync.select_completed([[source()]])
         rows = master()
@@ -61,9 +61,68 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(candidate['direct_name_match'])
         for key in ['swapped_name_match', 'property_exact', 'source_property_present', 'firstlast_both_populated']:
             self.assertTrue(candidate[key])
-        self.assertEqual([], plan['changes'])
-        self.assertEqual({'master_owner_property_collision': 1}, plan['holds'])
+        self.assertEqual({}, plan['holds'])
+        self.assertEqual(1, plan['matched'])
+        self.assertEqual(
+            [(0, 7, 'Phone 1'), (0, 8, 'Phone 2'),
+             (0, 9, 'Skip Trace Status'), (0, 10, 'Skip Trace Date'),
+             (1, 7, '(210) 555-0101'), (1, 9, 'Done'), (1, 10, '2026-11-01')],
+            plan['changes'])
+        after = sync.apply_matrix(rows, plan['changes'])
+        self.assertEqual(before, [row[:7] for row in after])
+        self.assertEqual([], sync.plan_patch(chosen, after)['changes'])
         self.assertEqual(before, rows)
+
+    def test_reversed_names_do_not_bypass_identity_or_manual_holds(self):
+        cases = []
+        def reversed_master():
+            rows = master()
+            rows[0][1:3] = ['Last Name', 'First Name']
+            return rows
+        for updates, values in [
+                ({}, ['Jane', 'Other', '123 Main St']),
+                ({}, ['Jane', 'Doe', '999 Other St']),
+                ({'prop_address': ''}, ['Jane', 'Doe', '']),
+                ({'first': ''}, ['', 'Doe', '123 Main St']),
+                ({'last': ''}, ['Jane', '', '123 Main St']),
+                ({}, ['', 'Doe', '123 Main St']),
+                ({}, ['Jane', '', '123 Main St'])]:
+            rows = reversed_master(); rows[1][1:4] = values
+            cases.append(([source(**updates)], rows, 'master_owner_property_collision'))
+        rows = reversed_master(); rows.append(rows[1][:])
+        cases.append(([source()], rows, 'duplicate_master_identity'))
+        for identity in [' ' + DOC, DOC + ' | 20260123457']:
+            rows = reversed_master(); rows[1][0] = identity
+            cases.append(([source()], rows, 'missing_master_row'))
+        for status in ['Hold', 'Skipped', 'No Phone', 'Do Not Contact', 'DNC']:
+            rows = reversed_master(); rows[0].append('Status'); rows[1].append(status)
+            cases.append(([source()], rows, 'manual_lead_hold'))
+        for label, value in [('Phone 1', '2105550199'), ('Phone 2', '=A2'),
+                             ('Skip Trace Status', 'Hold'), ('Skip Trace Date', '2026-10-01')]:
+            rows = reversed_master(); rows[0].append(label); rows[1].append(value)
+            cases.append(([source()], rows, 'existing_contact_conflict'))
+        for records, rows, reason in cases:
+            with self.subTest(reason=reason, row=rows[1]):
+                before = copy.deepcopy(rows)
+                chosen, _ = sync.select_completed([records])
+                plan = sync.plan_patch(chosen, rows)
+                self.assertEqual([], plan['changes'])
+                self.assertEqual({reason: 1}, plan['holds'])
+                self.assertEqual(before, rows)
+        # Direct matching keeps its pre-existing single populated name behavior.
+        rows = master(); rows[1][1] = ''
+        chosen, _ = sync.select_completed([[source(first='')]])
+        self.assertEqual(1, sync.plan_patch(chosen, rows)['matched'])
+
+    def test_reversed_names_require_literal_valid_selected_document_identity(self):
+        rows = master(); rows[0][1:3] = ['Last Name', 'First Name']
+        for identity, record in [(' ' + DOC, source(doc_num=' ' + DOC)),
+                                 (DOC, source(doc_num=DOC + ' | 20260123457'))]:
+            with self.subTest(identity=identity):
+                rows[1][0] = identity
+                plan = sync.plan_patch({identity: record}, rows)
+                self.assertEqual([], plan['changes'])
+                self.assertEqual({'master_owner_property_collision': 1}, plan['holds'])
 
     def test_pretrace_history_schema_is_parsed_but_never_qualifies(self):
         rows = sync.parse_csv('doc_num,first,last,prop_address\n20260123456,Jane,Doe,123 Main St\n')
@@ -238,36 +297,81 @@ class MemoryTransport:
 
 
 class ProcessTests(unittest.TestCase):
-    def test_seven_swapped_candidates_report_private_diagnostics_without_writes(self):
+    def test_seven_swapped_candidates_preserve_full_snapshot_and_are_idempotent(self):
         import json
         import hashlib
-        records = [source(doc_num=str(20260123000 + i)) for i in range(7)]
+        records = [source(doc_num=str(20260123000 + i),
+                          **{'Phone 2': '2105550102'}) for i in range(7)]
         for mode in ['audit', 'apply']:
             transport = MemoryTransport()
             header = HEAD[:]; header[1:3] = ['Last Name ', 'First name']
-            rows = [header] + [[r['doc_num'], ' Jane ', ' DOE ', '123  MAIN st', '', '', ''] for r in records]
+            rows = [header] + [[r['doc_num'], ' Jane ', ' DOE ', '123  MAIN st',
+                                '2026-09-01', 'manual note', '=1+1'] for r in records]
             transport.state['rows'][sync.TARGET] = rows
             transport.state['rows'][sync.QUEUE] = [list(source())]
             before = copy.deepcopy(transport.state)
+            notes = copy.deepcopy(transport.notes)
             report = sync.synchronize(transport, [records], mode=mode)
             diagnostics = report['master_identity_diagnostics']
             self.assertEqual(7, len(diagnostics['candidates']))
             self.assertEqual({'name_swap_property_exact': 7}, diagnostics['classifications'])
             self.assertEqual(7, diagnostics['counts']['swapped_name_match'])
             self.assertEqual(0, diagnostics['counts']['direct_name_match'])
-            self.assertEqual({'master_owner_property_collision': 7}, report['master_holds'])
-            self.assertEqual(0, report['planned_cells'])
-            self.assertEqual(0, transport.writes)
-            self.assertEqual(before, transport.state)
+            self.assertEqual({}, report['source_holds'])
+            self.assertEqual({}, report['master_holds'])
+            self.assertEqual(7, report['selected_completed'])
+            self.assertEqual(7, report['planned_leads'])
+            self.assertEqual(sync.OUTPUT_HEADERS, report['planned_headers'])
+            self.assertEqual(32, report['planned_cells'])
+            expected = copy.deepcopy(before)
+            if mode == 'apply':
+                expected['meta']['sheets'][0]['properties']['gridProperties']['columnCount'] = 16
+                expected['rows'][sync.TARGET] = [header + [''] * 5 + sync.OUTPUT_HEADERS] + [
+                    row + [''] * 5 + [record[key] for key in sync.OUTPUT_HEADERS]
+                    for row, record in zip(rows[1:], records)]
+                self.assertEqual(32, report['written_cells'])
+                self.assertTrue(report['verified'])
+                self.assertEqual(0, report['immediate_rerun_cells'])
+                rerun = sync.synchronize(transport, [records], mode='apply')
+                self.assertEqual(0, rerun['written_cells'])
+                self.assertEqual(7, rerun['already_synced'])
+                self.assertTrue(rerun['verified'])
+            else:
+                self.assertEqual(0, report['written_cells'])
+                self.assertFalse(report['verified'])
+            self.assertEqual(int(mode == 'apply'), transport.writes)
+            self.assertEqual(expected, transport.state)
+            self.assertEqual(notes, transport.notes)
             self.assertEqual(header, report['tabs'][0]['headers'])
             self.assertEqual(header, sync.profile_snapshot(before)['tabs'][0]['headers'])
             serialized = json.dumps(report)
             for record in records:
-                for key in ['doc_num', 'first', 'last', 'prop_address', 'Phone 1']:
+                for key in ['doc_num', 'first', 'last', 'prop_address', 'Phone 1', 'Phone 2']:
                     self.assertNotIn(record[key], serialized)
             for i, candidate in enumerate(diagnostics['candidates'], 1):
                 self.assertEqual(i, candidate['master_row_index'])
                 self.assertEqual(hashlib.sha256(records[i - 1]['doc_num'].encode()).hexdigest(), candidate['identity_sha256'])
+
+    def test_reversed_names_do_not_bypass_source_decisions_or_duplicates(self):
+        cases = [
+            [[source(), source()]],
+            [[source()], [source(first='Other')]],
+            *[[[source(**{'Skip Trace Status': status})], [source()]]
+              for status in ['', 'Hold', 'Skipped', 'No Phone', 'Pending', 'Error']],
+        ]
+        for history in cases:
+            with self.subTest(history=history):
+                transport = MemoryTransport()
+                transport.state['rows'][sync.TARGET][0][1:3] = ['Last Name', 'First Name']
+                transport.state['rows'][sync.QUEUE] = [list(source())]
+                before = copy.deepcopy(transport.state)
+                report = sync.synchronize(transport, history, mode='apply')
+                self.assertEqual(0, report['planned_leads'])
+                self.assertEqual(0, report['written_cells'])
+                self.assertGreater(sum(report['source_holds'].values()), 0)
+                self.assertEqual(0, transport.writes)
+                self.assertEqual(before, transport.state)
+                self.assertTrue(report['verified'])
 
     def test_live_blank_reset_recovers_done_without_bypassing_decisions_or_collisions(self):
         cases = [

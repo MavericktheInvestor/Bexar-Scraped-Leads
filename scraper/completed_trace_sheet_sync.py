@@ -229,7 +229,7 @@ def plan_patch(selected, before, minimum_new_column=0):
                           'exact_identity' if existing_identity == expected_identity else
                           'name_swap_property_exact' if flags['swapped_name_match'] and flags['property_exact']
                           else 'name_mismatch')
-        # Matrix indexes are zero-based (header=0); these diagnostics never authorize writes.
+        # Matrix indexes are zero-based (header=0); diagnostics do not bypass holds below.
         candidates.append(dict(
             master_row_index=index, identity_sha256=hashlib.sha256(identity.encode('utf-8')).hexdigest(),
             classification=classification, **flags))
@@ -239,8 +239,12 @@ def plan_patch(selected, before, minimum_new_column=0):
                 and normalized(row[manual_status]) in {'hold', 'skipped', 'no phone', 'do not contact', 'dnc'}):
             holds['manual_lead_hold'] += 1
             continue
-        if (existing_identity != expected_identity or not expected_identity[2]
-                or not any(expected_identity[:2])):
+        # Only selected, literal document identities can use the reversed-name exception.
+        safe_name_swap = (identity_valid(identity) and record.get('doc_num') == identity
+                          and flags['swapped_name_match'] and flags['firstlast_both_populated']
+                          and flags['property_exact'] and flags['source_property_present'])
+        if ((existing_identity != expected_identity and not safe_name_swap)
+                or not expected_identity[2] or not any(expected_identity[:2])):
             holds['master_owner_property_collision'] += 1
             continue
         wanted_phones = {phone(record.get(label)) for label in OUTPUT_HEADERS[:2]} - {None}
