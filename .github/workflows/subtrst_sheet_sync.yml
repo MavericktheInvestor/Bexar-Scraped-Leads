@@ -1,0 +1,52 @@
+name: SUBTRST Sheet Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Audit only by default; apply appends missing source identities
+        type: choice
+        options: [audit, apply]
+        default: audit
+        required: true
+  schedule:
+    - cron: '30 14 * * *'
+  workflow_run:
+    workflows: ['Scrape Bexar County Leads']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: subtrst-sheet-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Scraper commits data during its run; triggering head_sha predates it.
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Sheets-only dependencies
+        run: python -m pip install google-auth google-auth-httplib2 google-api-python-client
+      - name: Audit or append and verify all source identities
+        run: python scraper/subtrst_sheet_sync.py
+        env:
+          PYTHONUNBUFFERED: '1'
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SUBTRST_SOURCE: data/subtrst_records.json
+          SUBTRST_SYNC_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'apply' }}
