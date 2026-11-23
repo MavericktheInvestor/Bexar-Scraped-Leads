@@ -1,4 +1,4 @@
-"""Append-only Substitute Trustee sheet synchronization; no CRM or tracing imports."""
+"""Newest-filed-first Substitute Trustee sheet sync; no CRM or tracing imports."""
 
 
 import copy
@@ -77,10 +77,9 @@ def header_map(rows):
     return {h: i for i, h in enumerate(names) if h}
 
 
-def existing_identities(rows, mapping):
-    found = set()
-    column = mapping['document number']
-    for row in rows[1:]:
+def lead_indexes(rows, mapping):
+    indexes = []
+    for index, row in enumerate(rows[1:], 1):
         # Only the main table's recognized filing/lead/source markers prove
         # that this column contains a document identity. Other regions may put
         # text, headers or even 11-digit phone/account numbers in this column.
@@ -93,8 +92,16 @@ def existing_identities(rows, mapping):
                                                  'probate', 'tax delinquency', 'divorce',
                                                  'notice of foreclosure', 'tax deed'}
                          or cell('source') == 'bexar county clerk')
-        if not declared_lead:
-            continue
+        if declared_lead:
+            indexes.append(index)
+    return indexes
+
+
+def existing_identities(rows, mapping):
+    found = set()
+    column = mapping['document number']
+    for index in lead_indexes(rows, mapping):
+        row = rows[index]
         if len(row) <= column or row[column] == '':
             raise SyncError('Recognized existing lead is missing its document identity')
         identity = document_identity(row[column])
@@ -137,9 +144,10 @@ SHEET_NAME = 'Sheet1'
 SHEET_RANGE = "'Sheet1'"
 
 
-def read_rows(service):
+def read_rows(service, sheet_name=SHEET_NAME):
+    quoted = "'" + sheet_name.replace("'", "''") + "'"
     return service.values().get(
-        spreadsheetId=SHEET_ID, range=SHEET_RANGE, valueRenderOption='FORMULA',
+        spreadsheetId=SHEET_ID, range=quoted, valueRenderOption='FORMULA',
         dateTimeRenderOption='SERIAL_NUMBER').execute().get('values', [])
 
 
@@ -150,7 +158,63 @@ def canonical(rows):
             row.pop()
     while result and not result[-1]:
         result.pop()
-    return result
+    # Sheets numbers are doubles (1 and 1.0 are equivalent), but booleans
+    # must never compare equal to 0/1 as Python's normal list equality allows.
+    return [[('number' if type(value) in (int, float) else type(value).__name__, value)
+             for value in row] for row in result]
+
+
+def filed_date(value):
+    """Parse sort keys only: never normalize or replace source cells."""
+    from datetime import date, timedelta
+    try:
+        if type(value) in (int, float) and math.isfinite(value):
+            return date(1899, 12, 30) + timedelta(days=math.floor(value))
+        if isinstance(value, str):
+            if re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}', value):
+                return date.fromisoformat(value)
+            if re.fullmatch(r'[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}', value):
+                month, day, year = map(int, value.split('/'))
+                return date(year, month, day)
+    except (ValueError, OverflowError):
+        pass
+    raise SyncError('Missing or unsupported lead Date Filed; correct offline before moving rows')
+
+
+def plan_placement(before, planned, sheet_id):
+    """Sequential, upward whole-row moves preserve all other rows in order."""
+    rows = copy.deepcopy(before)
+    requests = []
+    if planned:
+        requests.extend([
+            {'insertDimension': {'range': {'sheetId': sheet_id, 'dimension': 'ROWS',
+                                          'startIndex': 1, 'endIndex': 1 + len(planned)},
+                                 'inheritFromBefore': False}},
+            {'updateCells': {'start': {'sheetId': sheet_id, 'rowIndex': 1, 'columnIndex': 0},
+                             'rows': [{'values': [{'userEnteredValue': {
+                                 ('boolValue' if type(v) is bool else
+                                  'numberValue' if type(v) in (int, float) else 'stringValue'): v}}
+                                                  for v in row]} for row in planned],
+                             'fields': 'userEnteredValue'}}])
+        rows[1:1] = copy.deepcopy(planned)
+    mapping = header_map(rows)
+    indexes = lead_indexes(rows, mapping)
+    dates = {i: filed_date(rows[i][mapping['date filed']]
+                          if len(rows[i]) > mapping['date filed'] else '') for i in indexes}
+    ordered = sorted(indexes, key=lambda index: dates[index], reverse=True)  # stable equal-date order
+    tokens = list(range(len(rows)))
+    for destination, token in enumerate(ordered, 1):
+        source = tokens.index(token)
+        if source == destination:
+            continue
+        assert source > destination
+        requests.append({'moveDimension': {
+            'source': {'sheetId': sheet_id, 'dimension': 'ROWS',
+                       'startIndex': source, 'endIndex': source + 1},
+            'destinationIndex': destination}})
+        tokens.insert(destination, tokens.pop(source))
+        rows.insert(destination, rows.pop(source))
+    return requests, rows
 
 
 def synchronize(service, payload, mode='audit', log=print):
@@ -167,36 +231,55 @@ def synchronize(service, payload, mode='audit', log=print):
         raise SyncError('Existing Sheet1 tab is required; never create or rename tabs')
     before = read_rows(service)
     planned = plan_rows(records, before)
+    requests, expected = plan_placement(before, planned, target[0]['sheetId'])
+    snapshots = {SHEET_NAME: before}
+    if requests:
+        # A move can rewrite references in other tabs too. Refuse formulas rather
+        # than claiming unchanged text proves reference semantics were preserved.
+        snapshots.update({tab['title']: read_rows(service, tab['title'])
+                          for tab in tabs if tab['title'] != SHEET_NAME})
+        if any(isinstance(value, str) and value.startswith('=')
+               for rows in snapshots.values() for row in rows for value in row):
+            raise SyncError('Existing formula cells prevent safe row-reference verification; resolve offline')
     report = dict(source_identities=len(records), existing_physical_rows=len(before)-1,
                   existing_nonempty_rows=sum(any(value != '' for value in row) for row in before[1:]),
                   existing_identities=len(existing_identities(before, header_map(before))),
                   composite_source_identities=sum(' | ' in r['doc_num'] for r in records),
-                  missing=len(planned), appended=0)
+                  missing=len(planned), inserted=0,
+                  planned_moves=sum('moveDimension' in r for r in requests), moved=0)
     log('Counts: ' + str(report))
+    log('Plan: insert missing leads below header, then whole-row moves to contiguous '
+        'newest-Date-Filed-first order; all nonlead rows retain their relative order.')
     log('Source limitation: exact source identities, not independently verified distinct filings; '
         'historical owner-merged composites remain intact and cannot recover lost filings/types.')
     if mode == 'audit':
         return report
-    if planned:
-        if canonical(read_rows(service)) != canonical(before):
-            raise SyncError('Sheet changed before write; rerun audit without concurrent editors')
-        grid = target[0]['gridProperties']
-        needed = len(before) + len(planned) - grid['rowCount']
-        if needed > 0:
-            service.batchUpdate(spreadsheetId=SHEET_ID, body={'requests': [
-                {'appendDimension': {'sheetId': target[0]['sheetId'], 'dimension': 'ROWS',
-                                     'length': needed}}]}).execute()
-        service.values().update(spreadsheetId=SHEET_ID,
-                                range=f'{SHEET_RANGE}!A{len(before)+1}',
-                                valueInputOption='RAW', body={'values': planned}).execute()
+    if requests:
+        for title, rows in snapshots.items():
+            if canonical(read_rows(service, title)) != canonical(rows):
+                raise SyncError('Sheet changed before write; rerun audit without concurrent editors')
+        service.batchUpdate(spreadsheetId=SHEET_ID, body={'requests': requests}).execute()
     after = read_rows(service)
-    if canonical(after) != canonical(before + planned):
-        raise SyncError('Exact readback failed; existing or appended cells changed; manual audit required')
+    if canonical(after) != canonical(expected):
+        raise SyncError('Exact readback failed; lead payload/order or nonlead sequence changed; manual audit required')
+    expected_meta = copy.deepcopy(meta)
+    for sheet in expected_meta['sheets']:
+        if sheet['properties']['sheetId'] == target[0]['sheetId']:
+            sheet['properties']['gridProperties']['rowCount'] += len(planned)
+    after_meta = service.get(
+        spreadsheetId=SHEET_ID,
+        fields='properties(title),sheets(properties(sheetId,title,gridProperties))').execute()
+    if after_meta != expected_meta:
+        raise SyncError('Grid/tab readback failed; manual audit required')
+    for title, rows in snapshots.items():
+        if title != SHEET_NAME and canonical(read_rows(service, title)) != canonical(rows):
+            raise SyncError('Other-tab readback failed; manual audit required')
     if plan_rows(records, after):
         raise SyncError('Readback is missing source identities')
-    report['appended'] = len(planned)
-    log('Verified: all source identities present; existing values/formulas unchanged; appended='
-        + str(len(planned)))
+    report['inserted'] = len(planned)
+    report['moved'] = report['planned_moves']
+    log('Verified: exact full-row payloads and newest-first order; nonlead sequence preserved; '
+        + 'inserted=' + str(len(planned)) + '; moved=' + str(report['moved']))
     return report
 
 
