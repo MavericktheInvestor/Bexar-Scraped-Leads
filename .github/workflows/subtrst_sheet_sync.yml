@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Audit only by default; apply appends missing source identities
+        description: Audit only by default; apply inserts missing leads and orders newest filed first
         type: choice
         options: [audit, apply]
         default: audit
@@ -43,7 +43,7 @@ jobs:
           python-version: '3.11'
       - name: Install Sheets-only dependencies
         run: python -m pip install google-auth google-auth-httplib2 google-api-python-client
-      - name: Audit or append and verify all source identities
+      - name: Audit or place newest-first and verify all source identities
         run: python scraper/subtrst_sheet_sync.py
         env:
           PYTHONUNBUFFERED: '1'

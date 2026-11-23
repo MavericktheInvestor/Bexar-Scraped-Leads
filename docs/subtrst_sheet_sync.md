@@ -41,11 +41,32 @@ Equivalent environment settings: `SUBTRST_SOURCE` and `SUBTRST_SYNC_MODE`. The c
 
 Header mapping is by trimmed, case-insensitive header name, not positional first/last-name assumptions. All 22 existing standard headers must be uniquely present; extra custom/blank columns are left blank on new rows. Missing/ambiguous schema is never automatically repaired. Malformed document cells in recognized lead rows fail; unrelated shifted tables and `Column` headers are preserved, not interpreted as malformed leads or used as document identities. Comma-separated clerk owner names are split; otherwise the intact owner is retained in Last Name instead of inventing a first name.
 
-The script reads **the entire Sheet1**, including far-right cells, blank gaps, bottom notes and unrelated rows. Formula rendering preserves formula text for comparison. It rechecks the snapshot immediately before writing, extends the grid at its bottom when needed (`appendDimension`), then writes only the exact new bottom row range using `RAW`. It never inserts above existing data, clears cells, sorts, replaces headers, creates tabs or invokes CRM/tracing.
+The script reads **the entire Sheet1**, including far-right cells, blank gaps, bottom notes and unrelated rows. It recognizes existing leads by their filing/lead/source markers, including manual leads absent from the archive. All recognized leads, not just new SUBTRST arrivals, become one contiguous table immediately below the unchanged header, ordered by **Date Filed descending**. Equal-date rows retain their current relative order (new equal-date arrivals are inserted before existing rows). Newest ingestion alone does not determine placement: an older filing arriving later belongs farther down the table.
 
-Apply reads the entire target back and requires exact existing values/formulas plus exactly the planned appended rows, allowing only the API's omitted trailing empty cells. It independently verifies every source identity is now present. A second run plans zero appends. If a write times out, **do not blindly retry the write**: rerun audit, then apply; source identity deduplication detects already-landed rows.
+Planning parses ISO `YYYY-MM-DD`, US `m/d/YYYY`, and numeric Sheets date serials (epoch 1899-12-30, fractional days ignored). Unsupported or missing lead dates fail closed. Dates are **sort keys only**: existing date cells are never normalized or rewritten. Google `sortRange` is deliberately not used because mixed date representations cannot safely be sorted as raw values.
 
-GitHub concurrency serializes this workflow, but Google Sheets has no compare-and-swap transaction here. Avoid simultaneous human edits or unrelated writers during apply. A change after preflight can only be detected at readback, not safely rolled back; failure requires operator audit. Grid expansion alone may remain after a later write fails; existing cells are not altered by that expansion. Formatting, comments and protected ranges are not readback-verified; this code does not write them.
+A changing apply sends **one atomic `spreadsheets.batchUpdate`**:
+
+1. If source identities are missing, `insertDimension` adds exactly that many rows below the header, and `updateCells` sets only those newly inserted rows' `userEnteredValue`. Explicit string/number/bool values give RAW-equivalent semantics, including literal strings beginning `=` and genuine numeric zero.
+2. Sequential upward-only `moveDimension` requests move **whole rows**, including every column, to the planned chronological positions. Destination indexes are coordinates before removal; using only upward moves avoids ambiguous downward index adjustment. Existing/scattered leads are moved, never copied then cleared, deleted, broadly overwritten or reconstructed. Whole-row operations carry per-lead notes/formatting with their rows; unrelated rows and internal blank gaps retain their relative sequence. Absolute row numbers of unrelated content necessarily change.
+
+No tabs are created or renamed. No existing row's values are updated; no clear, delete, sortRange, CRM or tracing call is made. Offline reconciliation of the actual 334-lead CSV planned 265 whole-row moves to bring the 100 scattered additions into the chronological main table; no new identities were needed.
+
+### Formula gate and exact readback
+
+Before any planned mutation, audit/apply reads all existing tabs with `valueRenderOption=FORMULA` and `dateTimeRenderOption=SERIAL_NUMBER`. **Any existing formula-like cell beginning `=` anywhere in the spreadsheet blocks mutation**, including other-tab references, because this implementation does not attempt to prove rewritten formula-reference semantics. This gate conservatively blocks literal existing strings beginning `=` too. A public CSV showing no formula text does not satisfy this gate: authenticated API reads are required. With no planned changes, existing formulas do not trigger mutation.
+
+Immediately before the batch, apply rechecks all tab value snapshots. Afterward it reads the entire target and requires equality to the deterministic full-sheet simulation:
+
+- Unchanged header, exactly one full-width payload for every original document identity (including all manual/custom columns), plus only the planned inserted identities.
+- Exactly the planned newest-filed-first lead ordering and contiguous location.
+- Exact ordered nonlead row sequence, including all internal blank rows and far-right values.
+- API-omitted trailing empty cells/rows are ignored only for value comparison. Grid/tab metadata must match exactly, except target row count increases by the inserted-row count; moving existing rows must not reduce grid size.
+- Other tab snapshots must remain unchanged, and source identity deduplication must independently plan zero further inserts.
+
+Only after all checks pass are `inserted`/`moved` reported as verified. Audit is read-only and reports the insertion/move plan; a second apply plans zero writes. If a batch times out, **do not blindly resend it**: rerun audit, then apply using the refreshed sheet snapshot.
+
+GitHub concurrency serializes this workflow, but Sheets has no compare-and-swap precondition here. Avoid concurrent human edits or unrelated writers during apply; an edit after preflight can only be detected at readback, not safely rolled back. A failed readback requires operator audit and is never reported as no-write or success. Notes, comments, formatting and protected ranges are carried by whole-row operations but are not independently readback-verified. External-spreadsheet formulas are outside the verified scope; coordinate with their owners before moving rows.
 
 ## Tests
 

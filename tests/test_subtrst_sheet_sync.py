@@ -102,8 +102,8 @@ class PlanningTests(unittest.TestCase):
         before = [HEADERS] + [[] for _ in range(100)] + [footer, shifted]
         service = MemorySheets(before)
         report = sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
-        self.assertEqual(report['appended'], 1)
-        self.assertEqual(service.rows[:len(before)], before)
+        self.assertEqual(report['inserted'], 1)
+        self.assertEqual(service.rows[2:], before[1:])
         # An unrelated table's numeric field cannot suppress a proven source lead.
         unrelated = [''] * 66
         unrelated[13] = '20260000001'
@@ -178,21 +178,125 @@ class MemorySheets:
         return Values()
 
     def batchUpdate(self, **kwargs):
-        self.calls.append(('grow', kwargs))
-        def grow():
-            request = kwargs['body']['requests'][0]['appendDimension']
-            assert request['sheetId'] == 7 and request['dimension'] == 'ROWS'
-            self.grid_rows += request['length']
+        self.calls.append(('batch', kwargs))
+        def apply():
+            for request in kwargs['body']['requests']:
+                if 'insertDimension' in request:
+                    spec = request['insertDimension']
+                    span = spec['range']
+                    count = span['endIndex'] - span['startIndex']
+                    self.rows[span['startIndex']:span['startIndex']] = [[] for _ in range(count)]
+                    self.grid_rows += count
+                elif 'updateCells' in request:
+                    spec = request['updateCells']
+                    assert spec['fields'] == 'userEnteredValue'
+                    for i, row in enumerate(spec['rows'], spec['start']['rowIndex']):
+                        self.rows[i] = [next(iter(c['userEnteredValue'].values()))
+                                        for c in row['values']]
+                elif 'moveDimension' in request:
+                    spec = request['moveDimension']
+                    span = spec['source']
+                    assert span['dimension'] == 'ROWS' and span['sheetId'] == 7
+                    start, end = span['startIndex'], span['endIndex']
+                    dest = spec['destinationIndex']
+                    assert dest < start  # all production moves are upward
+                    moved = self.rows[start:end]
+                    del self.rows[start:end]
+                    self.rows[dest:dest] = moved
+                else:
+                    raise AssertionError('Unsafe request: ' + str(request.keys()))
             return {}
-        return Request(grow)
+        return Request(apply)
+
+
+class NewestFirstTests(unittest.TestCase):
+    def test_consolidates_scattered_leads_by_parsed_date_in_one_atomic_batch(self):
+        leads = sync.plan_rows([record(filed='9/30/2026'),
+                                record(doc_num='20260000002', filed='2026-10-01'),
+                                record(doc_num='20260000003', filed=46300)], [HEADERS])
+        leads[0] += [''] * 47 + ['far-right manual note']
+        before = [HEADERS, leads[0], [], ['unrelated'], [], leads[1], leads[2]]
+        service = MemorySheets(before)
+        payload = snapshot(record(), record(doc_num='20260000002'))
+        audit = sync.synchronize(service, payload, 'audit', lambda _: None)
+        self.assertGreater(audit.get('planned_moves', 0), 0)
+        self.assertFalse(any(name == 'batch' for name, _ in service.calls))
+        sync.synchronize(service, payload, 'apply', lambda _: None)
+        self.assertEqual(service.rows, [HEADERS, leads[2], leads[1], leads[0], [], ['unrelated'], []])
+        self.assertEqual(sum(name == 'batch' for name, _ in service.calls), 1)
+        requests = next(k['body']['requests'] for n, k in service.calls if n == 'batch')
+        self.assertTrue(all('moveDimension' in r for r in requests))
+        sync.synchronize(service, payload, 'apply', lambda _: None)
+        self.assertEqual(sum(name == 'batch' for name, _ in service.calls), 1)
+
+
+    def test_future_arrivals_are_sorted_by_filing_date_not_ingestion_and_raw_typed(self):
+        original = sync.plan_rows([record(filed='2026-10-15')], [HEADERS])[0]
+        service = MemorySheets([HEADERS, original, [], ['unrelated']])
+        newer = record(doc_num='20260000002', filed='2026-11-01', score=0,
+                       owner='=NOT_A_FORMULA', amount=True)
+        older = record(doc_num='20260000003', filed='2026-09-01')
+        report = sync.synchronize(service, snapshot(record(), newer, older), 'apply', lambda _: None)
+        self.assertEqual(report['inserted'], 2)
+        self.assertEqual([r[13] for r in service.rows[1:4]],
+                         ['20260000002', '20260000001', '20260000003'])
+        self.assertEqual(service.rows[2], original)
+        self.assertEqual(service.rows[4:], [[], ['unrelated']])
+        requests = next(k['body']['requests'] for n, k in service.calls if n == 'batch')
+        self.assertEqual(requests[1]['updateCells']['rows'][0]['values'][0],
+                         {'userEnteredValue': {'stringValue': '=NOT_A_FORMULA'}})
+        self.assertEqual(requests[1]['updateCells']['rows'][0]['values'][14],
+                         {'userEnteredValue': {'boolValue': True}})
+
+    def test_formula_anywhere_in_target_blocks_relocation_before_write(self):
+        for formula_row in (['=SUM(A2:A10)'], [''] * 69 + ['=Sheet2!A1']):
+            with self.subTest(width=len(formula_row)):
+                service = MemorySheets([HEADERS, [], formula_row])
+                with self.assertRaisesRegex(ValueError, 'formula'):
+                    sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
+                self.assertFalse(any(n == 'batch' for n, _ in service.calls))
+
+    def test_other_tab_formula_blocks_move_without_touching_either_tab(self):
+        class OtherTabSheets(MemorySheets):
+            def get(self, **kwargs):
+                response = super().get(**kwargs).execute()
+                response['sheets'].append({'properties': {'title': "Other's tab", 'sheetId': 8,
+                                                          'gridProperties': {'rowCount': 10, 'columnCount': 2}}})
+                return Request(lambda: response)
+
+            def values(self):
+                base = super().values()
+                original = base.get
+                def get(**kwargs):
+                    if kwargs['range'] == "'Other''s tab'":
+                        self.calls.append(('other_read', kwargs))
+                        return Request(lambda: {'values': [["=Sheet1!A2"]]})
+                    return original(**kwargs)
+                base.get = get
+                return base
+        service = OtherTabSheets([HEADERS, [], ['unrelated']])
+        with self.assertRaisesRegex(ValueError, 'formula'):
+            sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
+        self.assertFalse(any(n == 'batch' for n, _ in service.calls))
+
+    def test_invalid_lead_dates_fail_closed_without_mutation(self):
+        for value in ('', 'tomorrow', '2/30/2026', '2026-13-01', float('inf'), True):
+            with self.subTest(value=value):
+                row = sync.plan_rows([record()], [HEADERS])[0]
+                row[12] = value
+                service = MemorySheets([HEADERS, row, [], ['footer']])
+                with self.assertRaisesRegex(ValueError, 'Date Filed'):
+                    sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
+                self.assertFalse(any(n == 'batch' for n, _ in service.calls))
 
 
 class SyncTests(unittest.TestCase):
-    def test_audit_is_read_only_and_apply_preserves_all_cells_grows_grid_and_is_idempotent(self):
+    def test_audit_is_read_only_and_apply_preserves_all_cells_inserts_grid_rows_and_is_idempotent(self):
         old = [''] * 70
         old[11] = 'SUBTRST'
         old[13] = '20260000001'
-        old[20] = '=1+2'
+        old[12] = '11/17/2026'
+        old[20] = 'manual note'
         old[69] = 'far right unrelated'
         before = [HEADERS, old] + [[] for _ in range(100)] + [['Column6']]
         service = MemorySheets(before)
@@ -203,24 +307,25 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(report['existing_physical_rows'], 102)
         self.assertEqual(report['existing_nonempty_rows'], 2)
         self.assertEqual(service.rows, before)
-        self.assertFalse(any(c[0] in ('grow', 'write') for c in service.calls))
+        self.assertFalse(any(c[0] in ('batch', 'write') for c in service.calls))
         self.assertIn('Synthetic leads', '\n'.join(output))
         self.assertIn('Sheet1', '\n'.join(output))
         self.assertNotIn('EXAMPLE', '\n'.join(output))
         result = sync.synchronize(service, payload, 'apply', output.append)
-        self.assertEqual(result['appended'], 1)
-        self.assertEqual(service.rows[:len(before)], before)
-        write = next(kwargs for name, kwargs in service.calls if name == 'write')
-        self.assertEqual(write['valueInputOption'], 'RAW')
-        self.assertEqual(write['range'], "'Sheet1'!A104")
-        self.assertEqual(write['body']['values'][0][15], 0)
+        self.assertEqual(result['inserted'], 1)
+        self.assertEqual(service.rows[2:], before[1:])
+        write = next(kwargs for name, kwargs in service.calls if name == 'batch')
+        requests = write['body']['requests']
+        self.assertEqual(requests[0]['insertDimension']['range']['startIndex'], 1)
+        self.assertEqual(requests[1]['updateCells']['rows'][0]['values'][15],
+                         {'userEnteredValue': {'numberValue': 0}})
         read = next(kwargs for name, kwargs in service.calls if name == 'read')
         self.assertEqual(read['range'], "'Sheet1'")
         self.assertEqual(read['valueRenderOption'], 'FORMULA')
-        writes = sum(name == 'write' for name, _ in service.calls)
+        writes = sum(name == 'batch' for name, _ in service.calls)
         again = sync.synchronize(service, payload, 'apply', output.append)
-        self.assertEqual(again['appended'], 0)
-        self.assertEqual(sum(name == 'write' for name, _ in service.calls), writes)
+        self.assertEqual(again['inserted'], 0)
+        self.assertEqual(sum(name == 'batch' for name, _ in service.calls), writes)
 
     def test_aborts_before_writing_on_concurrent_change(self):
         service = MemorySheets([HEADERS, ['unrelated']])
@@ -230,20 +335,38 @@ class SyncTests(unittest.TestCase):
         service.on_read = mutate
         with self.assertRaisesRegex(ValueError, 'changed before write'):
             sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
-        self.assertFalse(any(name in ('write', 'grow') for name, _ in service.calls))
+        self.assertFalse(any(name in ('write', 'batch') for name, _ in service.calls))
+
+    def test_readback_rejects_boolean_to_number_type_change(self):
+        service = MemorySheets([HEADERS, ['footer']])
+        def mutate(s):
+            if any(n == 'batch' for n, _ in s.calls):
+                s.rows[1][14] = 1
+        service.on_read = mutate
+        with self.assertRaisesRegex(ValueError, 'readback'):
+            sync.synchronize(service, snapshot(record(amount=True)), 'apply', lambda _: None)
+
+    def test_readback_rejects_changed_grid_even_when_blank_rows_are_omitted(self):
+        service = MemorySheets([HEADERS, ['footer']], grid_rows=50)
+        def mutate(s):
+            if any(n == 'batch' for n, _ in s.calls):
+                s.grid_rows -= 1
+        service.on_read = mutate
+        with self.assertRaisesRegex(ValueError, 'readback'):
+            sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
 
     def test_readback_rejects_mutation_missing_rows_and_wrong_values(self):
         for corruption in ('existing', 'missing', 'new'):
             with self.subTest(corruption=corruption):
                 service = MemorySheets([HEADERS, ['unrelated']], grid_rows=100)
                 def mutate(s):
-                    if any(name == 'write' for name, _ in s.calls):
+                    if any(name == 'batch' for name, _ in s.calls):
                         if corruption == 'existing':
-                            s.rows[1][0] = 'changed'
+                            s.rows[-1][0] = 'changed'
                         elif corruption == 'missing':
-                            s.rows.pop()
+                            s.rows.pop(1)
                         else:
-                            s.rows[-1][13] = '20260000009'
+                            s.rows[1][13] = '20260000009'
                 service.on_read = mutate
                 with self.assertRaisesRegex(ValueError, 'readback'):
                     sync.synchronize(service, snapshot(record()), 'apply', lambda _: None)
