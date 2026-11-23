@@ -1,0 +1,61 @@
+name: Completed Trace Master Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Audit first; apply only fills safe blank contact cells in existing master leads
+        type: choice
+        options: [audit, apply]
+        default: audit
+        required: true
+  schedule:
+    - cron: '15 15 * * *'
+  workflow_run:
+    workflows: ['Skip Trace Leads (Deal Machine)', 'Build Skip Trace Queue']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: completed-trace-master-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test preservation and workflow contract without credentials
+        run: python -m unittest discover -s tests -p "test_completed_trace*.py" -v
+      - name: Install Sheets-only dependencies
+        run: python -m pip install google-auth google-auth-httplib2 google-api-python-client
+      - name: Reconcile completed historical and live results only
+        run: python scraper/completed_trace_sheet_sync.py --mode "$SYNC_MODE" --summary completed-trace-audit.json
+        env:
+          PYTHONUNBUFFERED: '1'
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SYNC_MODE: ${{ github.event_name == 'workflow_dispatch' && (inputs.mode || 'audit') || (vars.COMPLETED_TRACE_MASTER_APPLY_ENABLED == 'true' && 'apply' || 'audit') }}
+      - name: Save sanitized audit summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: completed-trace-audit-${{ github.run_id }}
+          path: completed-trace-audit.json
+          if-no-files-found: warn
+          retention-days: 30
