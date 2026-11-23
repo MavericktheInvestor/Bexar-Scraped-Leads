@@ -58,6 +58,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dashboard/records.json data/records.json data/leads.csv || true
+          if [ -f data/subtrst_records.json ]; then git add data/subtrst_records.json; fi
           git diff --cached --quiet || git commit -m "leads: $(date -u +%Y-%m-%d)"
           git push origin main || (git pull --rebase origin main && git push origin main)
 

@@ -802,6 +802,14 @@ async def main():
 
     motivated.sort(key=lambda x:x["score"],reverse=True)
 
+    # Freeze ALL enriched SUBTRST filings before owner merge or exclusions.
+    # Use in_window, not motivated: no score/business/contact predicate applies.
+    try:
+        from scraper.subtrst_sheet_sync import capture_subtrst, persist_archive
+    except ModuleNotFoundError:
+        from subtrst_sheet_sync import capture_subtrst, persist_archive
+    subtrst_capture = capture_subtrst(in_window)
+
     # ── Owner-level merge ─────────────────────────────────────────────────────
     # If the same owner has multiple filings, stack their flags/doc types and
     # keep the highest score. This prevents burning 2 skip traces on one person.
@@ -919,6 +927,12 @@ async def main():
     print(f"\n  ✅ Total motivated leads: {len(motivated)}")
     print(f"  ✅ High score (70+):      {len(high_score)}")
     print(f"  ✅ With address:          {with_addr}")
+
+    # Save only after the full requested collection has succeeded. Historical
+    # seeds remain intact; this independent archive never changes old exports.
+    if subtrst_capture:
+        persist_archive(DATA_DIR/"subtrst_records.json", subtrst_capture,
+                        datetime.utcnow().isoformat()+"Z")
 
     # Save
     payload={
