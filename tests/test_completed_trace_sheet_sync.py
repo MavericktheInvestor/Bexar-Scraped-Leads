@@ -22,6 +22,49 @@ def master():
 
 
 class PlanTests(unittest.TestCase):
+    def test_property_mismatch_and_incomplete_identity_are_distinguished(self):
+        cases = [
+            ({}, ['Jane', 'Doe', '999 Other St'], 'property_mismatch', True, False, True, True),
+            ({}, ['Doe', 'Jane', '999 Other St'], 'property_mismatch', False, True, True, True),
+            ({'prop_address': ''}, ['Jane', 'Doe', ''], 'incomplete_identity', True, False, False, True),
+            ({'first': '', 'last': ''}, ['', '', '123 Main St'], 'incomplete_identity', True, True, True, False),
+            ({}, ['Jane', 'Other', '123 Main St'], 'name_mismatch', False, False, True, True),
+        ]
+        for updates, values, classification, direct, swapped, present, populated in cases:
+            with self.subTest(classification=classification, values=values):
+                rows = master(); rows[1][1:4] = values
+                plan = sync.plan_patch({DOC: source(**updates)}, rows)
+                diagnostic = plan['master_identity_diagnostics']
+                candidate = diagnostic['candidates'][0]
+                self.assertEqual({classification: 1}, diagnostic['classifications'])
+                self.assertEqual(classification, candidate['classification'])
+                self.assertEqual(direct, candidate['direct_name_match'])
+                self.assertEqual(swapped, candidate['swapped_name_match'])
+                self.assertEqual(present, candidate['source_property_present'])
+                self.assertEqual(populated, candidate['firstlast_both_populated'])
+                self.assertEqual([], plan['changes'])
+                self.assertEqual({'master_owner_property_collision': 1}, plan['holds'])
+
+    def test_exact_name_swap_diagnostics_do_not_release_collision(self):
+        import hashlib
+        chosen, _ = sync.select_completed([[source()]])
+        rows = master()
+        rows[0][1:3] = ['Last Name ', 'First name']
+        before = copy.deepcopy(rows)
+        plan = sync.plan_patch(chosen, rows)
+        diagnostic = plan['master_identity_diagnostics']
+        candidate = diagnostic['candidates'][0]
+        self.assertEqual(1, diagnostic['counts']['swapped_name_match'])
+        self.assertEqual({'name_swap_property_exact': 1}, diagnostic['classifications'])
+        self.assertEqual(1, candidate['master_row_index'])
+        self.assertEqual(hashlib.sha256(DOC.encode()).hexdigest(), candidate['identity_sha256'])
+        self.assertFalse(candidate['direct_name_match'])
+        for key in ['swapped_name_match', 'property_exact', 'source_property_present', 'firstlast_both_populated']:
+            self.assertTrue(candidate[key])
+        self.assertEqual([], plan['changes'])
+        self.assertEqual({'master_owner_property_collision': 1}, plan['holds'])
+        self.assertEqual(before, rows)
+
     def test_pretrace_history_schema_is_parsed_but_never_qualifies(self):
         rows = sync.parse_csv('doc_num,first,last,prop_address\n20260123456,Jane,Doe,123 Main St\n')
         chosen, held = sync.select_completed([rows])
@@ -195,6 +238,37 @@ class MemoryTransport:
 
 
 class ProcessTests(unittest.TestCase):
+    def test_seven_swapped_candidates_report_private_diagnostics_without_writes(self):
+        import json
+        import hashlib
+        records = [source(doc_num=str(20260123000 + i)) for i in range(7)]
+        for mode in ['audit', 'apply']:
+            transport = MemoryTransport()
+            header = HEAD[:]; header[1:3] = ['Last Name ', 'First name']
+            rows = [header] + [[r['doc_num'], ' Jane ', ' DOE ', '123  MAIN st', '', '', ''] for r in records]
+            transport.state['rows'][sync.TARGET] = rows
+            transport.state['rows'][sync.QUEUE] = [list(source())]
+            before = copy.deepcopy(transport.state)
+            report = sync.synchronize(transport, [records], mode=mode)
+            diagnostics = report['master_identity_diagnostics']
+            self.assertEqual(7, len(diagnostics['candidates']))
+            self.assertEqual({'name_swap_property_exact': 7}, diagnostics['classifications'])
+            self.assertEqual(7, diagnostics['counts']['swapped_name_match'])
+            self.assertEqual(0, diagnostics['counts']['direct_name_match'])
+            self.assertEqual({'master_owner_property_collision': 7}, report['master_holds'])
+            self.assertEqual(0, report['planned_cells'])
+            self.assertEqual(0, transport.writes)
+            self.assertEqual(before, transport.state)
+            self.assertEqual(header, report['tabs'][0]['headers'])
+            self.assertEqual(header, sync.profile_snapshot(before)['tabs'][0]['headers'])
+            serialized = json.dumps(report)
+            for record in records:
+                for key in ['doc_num', 'first', 'last', 'prop_address', 'Phone 1']:
+                    self.assertNotIn(record[key], serialized)
+            for i, candidate in enumerate(diagnostics['candidates'], 1):
+                self.assertEqual(i, candidate['master_row_index'])
+                self.assertEqual(hashlib.sha256(records[i - 1]['doc_num'].encode()).hexdigest(), candidate['identity_sha256'])
+
     def test_live_blank_reset_recovers_done_without_bypassing_decisions_or_collisions(self):
         cases = [
             ('', [[source()]], 1),

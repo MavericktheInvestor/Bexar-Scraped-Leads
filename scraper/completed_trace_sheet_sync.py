@@ -1,5 +1,6 @@
 """Preservation-first completed trace reconciliation. Never performs skip tracing."""
 import copy
+import hashlib
 import re
 from datetime import date
 
@@ -207,6 +208,7 @@ def plan_patch(selected, before, minimum_new_column=0):
         if isinstance(identity, str):
             indexes[identity].append(index)
     changes, holds, matched, unchanged = [], Counter(), 0, 0
+    diagnostic_counts, classifications, candidates = Counter(), Counter(), []
     for identity, record in selected.items():
         positions = indexes[identity]
         if len(positions) != 1:
@@ -214,12 +216,29 @@ def plan_patch(selected, before, minimum_new_column=0):
             continue
         index = positions[0]
         row = before[index]
+        existing_identity = tuple(normalized(cell(row, key)) for key in ('first', 'last', 'prop_address'))
+        expected_identity = owner_property(record)
+        flags = dict(
+            direct_name_match=existing_identity[:2] == expected_identity[:2],
+            swapped_name_match=existing_identity[:2] == expected_identity[:2][::-1],
+            property_exact=existing_identity[2] == expected_identity[2],
+            source_property_present=bool(expected_identity[2]),
+            firstlast_both_populated=all(existing_identity[:2] + expected_identity[:2]))
+        classification = ('incomplete_identity' if not all(existing_identity + expected_identity) else
+                          'property_mismatch' if not flags['property_exact'] else
+                          'exact_identity' if existing_identity == expected_identity else
+                          'name_swap_property_exact' if flags['swapped_name_match'] and flags['property_exact']
+                          else 'name_mismatch')
+        # Matrix indexes are zero-based (header=0); these diagnostics never authorize writes.
+        candidates.append(dict(
+            master_row_index=index, identity_sha256=hashlib.sha256(identity.encode('utf-8')).hexdigest(),
+            classification=classification, **flags))
+        diagnostic_counts.update({key: int(value) for key, value in flags.items()})
+        classifications[classification] += 1
         if (manual_status is not None and manual_status < len(row)
                 and normalized(row[manual_status]) in {'hold', 'skipped', 'no phone', 'do not contact', 'dnc'}):
             holds['manual_lead_hold'] += 1
             continue
-        existing_identity = tuple(normalized(cell(row, key)) for key in ('first', 'last', 'prop_address'))
-        expected_identity = owner_property(record)
         if (existing_identity != expected_identity or not expected_identity[2]
                 or not any(expected_identity[:2])):
             holds['master_owner_property_collision'] += 1
@@ -263,7 +282,9 @@ def plan_patch(selected, before, minimum_new_column=0):
     if changes:
         changes = headers + changes
     return dict(changes=changes, new_headers=missing if changes else [], holds=dict(holds),
-                matched=matched, unchanged=unchanged)
+                matched=matched, unchanged=unchanged,
+                master_identity_diagnostics=dict(counts=dict(diagnostic_counts),
+                                                 classifications=dict(classifications), candidates=candidates))
 
 
 def canonical(rows):
@@ -313,6 +334,7 @@ def synchronize(transport, history, mode='audit', before=None):
                              nonempty_rows=sum(any(v != '' for v in row) for row in before['rows'][tab['title']][1:]))
                         for tab in tabs], live_source_rows=len(live), selected_completed=len(selected),
                   source_holds=source_holds, master_holds=plan['holds'],
+                  master_identity_diagnostics=plan['master_identity_diagnostics'],
                   planned_headers=plan['new_headers'], planned_cells=len(changes),
                   planned_leads=len({row for row, column, value in changes if row > 0}),
                   already_synced=plan['unchanged'], written_cells=0, verified=False,
