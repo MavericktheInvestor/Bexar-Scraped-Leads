@@ -538,84 +538,130 @@ def _api_row(row):
 
 # ── BCAD Parcel Lookup ────────────────────────────────────────────────────────
 class ParcelLookup:
-    def __init__(self): self.idx={}; self._load()
-    def _load(self):
-        import urllib3; urllib3.disable_warnings()
-        sess=requests.Session(); sess.headers["User-Agent"]="Mozilla/5.0"
-        for ep in ["https://opendata.bcad.org/resource/tpvk-6xh3.json",
-                   "https://opendata.bcad.org/resource/real-property.json"]:
-            try:
-                offset=0; limit=50000; loaded=0
-                while True:
-                    r=sess.get(ep,params={"$limit":limit,"$offset":offset},timeout=60,verify=False)
-                    r.raise_for_status(); rows=r.json()
-                    if not rows: break
-                    for row in rows: self._add(row)
-                    loaded+=len(rows)
-                    if len(rows)<limit: break
-                    offset+=limit; time.sleep(0.3)
-                if self.idx: print(f"  ✅ BCAD: {len(self.idx):,} entries"); return
-            except Exception as e: print(f"  ✗ BCAD: {e}")
-        if not HAS_DBF: print("  ⚠  No parcel data"); return
-        for url in ["https://www.bcad.org/clientdb/PropertyExport.zip",
-                    "https://www.bcad.org/Downloads/PropertyExport.zip"]:
-            try:
-                time.sleep(3); r=sess.get(url,timeout=120,stream=True); r.raise_for_status()
-                buf=io.BytesIO()
-                for chunk in r.iter_content(65536): buf.write(chunk)
-                zf=zipfile.ZipFile(io.BytesIO(buf.getvalue()))
-                dbfs=sorted([n for n in zf.namelist() if n.lower().endswith(".dbf")],
-                            key=lambda n:zf.getinfo(n).file_size,reverse=True)
-                if not dbfs: continue
-                with tempfile.TemporaryDirectory() as tmp:
-                    zf.extractall(tmp); self._dbf(os.path.join(tmp,dbfs[0]))
-                if self.idx: print(f"  ✅ DBF: {len(self.idx):,} entries"); return
-            except Exception as e: print(f"  ✗ {e}"); time.sleep(5)
-        print("  ⚠  BCAD unavailable")
+    ENDPOINT = "https://maps.bcad.org/arcgis/rest/services/PAMapSearch/MapServer/9/query"
+    FIELDS = "pacs_prop_id,prop_val_yr,owner_name,situs,addr_line1,addr_line2,addr_line3,addr_city,addr_state,addr_zip"
+    PAGE_SIZE = 500
+
+    def __init__(self, owners=(), session=None):
+        self.idx = {}
+        self.status = "not_requested"
+        names = sorted({k for owner in owners for k in self._v(owner or "") if len(k) <= 160})
+        if not names:
+            return
+        self.sess = session or requests.Session()
+        try:
+            self._load(names)
+            self.status = "complete"
+            print(f"  ✅ BCAD official API: {len(self.idx):,} full-name keys checked")
+        except Exception as exc:
+            # Enrichment is optional, but never expose partially fetched matches.
+            # Exception text can contain a URL with owner names: log type only.
+            self.idx.clear()
+            self.status = "unavailable"
+            print(f"  ⚠  BCAD enrichment unavailable ({type(exc).__name__}); no partial matches used")
+
+    def _query(self, params):
+        payload = None
+        try:
+            for attempt in range(3):
+                response = self.sess.get(self.ENDPOINT, params={"f": "json", **params}, timeout=45)
+                if (response.status_code == 429 or 500 <= response.status_code < 600) and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                response.raise_for_status()
+                payload = response.json()
+                break
+        except Exception:
+            raise RuntimeError("BCAD request failed") from None
+        if not isinstance(payload, dict) or "error" in payload:
+            raise RuntimeError("BCAD returned an API error")
+        return payload
+
+    def _count(self, where):
+        count = self._query({"where": where, "returnCountOnly": "true"}).get("count")
+        if type(count) is not int or not 0 <= count <= 50000:
+            raise RuntimeError("BCAD returned an invalid or excessive targeted count")
+        return count
+
+    def _load(self, names):
+        # Small exact-name batches avoid a county-wide export and long URLs.
+        for start in range(0, len(names), 10):
+            values = ",".join("'" + n.replace("'", "''") + "'" for n in names[start:start + 10])
+            where = f"UPPER(owner_name) IN ({values})"
+            expected = self._count(where)
+            rows = []
+            seen = set()
+            while len(rows) < expected:
+                payload = self._query({
+                    "where": where, "outFields": self.FIELDS, "returnGeometry": "false",
+                    "orderByFields": "pacs_prop_id,prop_val_yr,owner_name",
+                    "resultOffset": len(rows), "resultRecordCount": self.PAGE_SIZE,
+                })
+                features = payload.get("features")
+                if not isinstance(features, list) or not features:
+                    raise RuntimeError("BCAD pagination ended before the advertised count")
+                for feature in features:
+                    row = feature.get("attributes") if isinstance(feature, dict) else None
+                    if not isinstance(row, dict):
+                        raise RuntimeError("BCAD returned a malformed feature")
+                    pid, year, owner = row.get("pacs_prop_id"), row.get("prop_val_yr"), row.get("owner_name")
+                    if type(pid) is not int or type(year) is not int or not isinstance(owner, str) or not owner.strip():
+                        raise RuntimeError("BCAD returned an invalid property identity")
+                    identity = (pid, year, owner)
+                    if identity in seen:
+                        raise RuntimeError("BCAD repeated a property page")
+                    seen.add(identity)
+                    rows.append(row)
+                if len(rows) > expected:
+                    raise RuntimeError("BCAD exceeded the advertised count")
+                if len(rows) < expected:
+                    time.sleep(0.2)
+            if self._count(where) != expected:
+                raise RuntimeError("BCAD count changed during pagination")
+            for row in rows:
+                self._add(row)
+            time.sleep(0.2)
     def _add(self,row):
         owner=(row.get("owner_name") or row.get("owner") or "").upper().strip()
         if not owner: return
-        p={"prop_address":row.get("situs_address") or row.get("site_address",""),
-           "prop_city":row.get("situs_city","San Antonio"),
-           "prop_zip":row.get("situs_zip",""),
-           "mail_address":row.get("mail_address",""),
-           "mail_city":row.get("mail_city",""),
-           "mail_state":row.get("mail_state","TX"),
-           "mail_zip":row.get("mail_zip","")}
-        for k in self._v(owner): self.idx.setdefault(k,p)
-    def _dbf(self,path):
-        try:
-            for row in DBF(path,ignore_missing_memofile=True,encoding="latin-1"):
-                r={k.upper():safe(v) for k,v in row.items()}
-                owner=(r.get("OWNER") or r.get("OWN1") or "").upper().strip()
-                if not owner: continue
-                p={"prop_address":r.get("SITE_ADDR") or r.get("SITEADDR",""),
-                   "prop_city":r.get("SITE_CITY","San Antonio"),
-                   "prop_zip":r.get("SITE_ZIP") or r.get("SITEZIP",""),
-                   "mail_address":r.get("ADDR_1") or r.get("MAILADR1",""),
-                   "mail_city":r.get("CITY") or r.get("MAILCITY",""),
-                   "mail_state":r.get("STATE","TX"),
-                   "mail_zip":r.get("ZIP") or r.get("MAILZIP","")}
-                for k in self._v(owner): self.idx.setdefault(k,p)
-        except Exception as e: print(f"  ✗ {e}")
+        p={"prop_address":row.get("situs") or row.get("situs_address") or row.get("site_address",""),
+           "prop_city":row.get("situs_city", ""),
+           "prop_zip":row.get("situs_zip", ""),
+           "mail_address":row.get("mail_address") or ", ".join(safe(row.get(f)) for f in ("addr_line1", "addr_line2", "addr_line3") if safe(row.get(f))),
+           "mail_city":row.get("addr_city") or row.get("mail_city", ""),
+           "mail_state":row.get("addr_state") or row.get("mail_state", ""),
+           "mail_zip":row.get("addr_zip") or row.get("mail_zip", "")}
+        identity = (row["pacs_prop_id"], row["prop_val_yr"])
+        p["bcad_property_id"], p["bcad_data_year"] = identity
+        for k in self._v(owner):
+            self.idx.setdefault(k, {})[identity] = p
+
     @staticmethod
-    def _v(n):
-        n=re.sub(r"\s+"," ",n).strip().upper(); v={n}
-        if "," in n:
-            pts=[p.strip() for p in n.split(",",1)]
-            if len(pts)==2: v.add(f"{pts[1]} {pts[0]}"); v.add(pts[0]); v.add(pts[1])
-        else:
-            pts=n.split()
-            if len(pts)>=2:
-                v.add(f"{pts[-1]},{' '.join(pts[:-1])}")
-                v.add(f"{pts[-1]} {' '.join(pts[:-1])}")
-        return [x for x in v if x]
-    def lookup(self,owner):
-        if not owner: return {}
-        for k in self._v(owner.upper()):
-            h=self.idx.get(k)
-            if h: return h
-        return {}
+    def _v(name):
+        name = re.sub(r"\s+", " ", name).strip().upper()
+        if not name or ("," not in name and len(name.split()) < 2):
+            return []
+        variants = {name}
+        if "," in name:
+            last, first = (part.strip() for part in name.split(",", 1))
+            if not last or not first:
+                return []
+            variants.update((f"{last}, {first}", f"{last},{first}", f"{first} {last}", f"{last} {first}"))
+        elif 2 <= len(name.split()) <= 4 and not any(
+                token in name.split() for token in ("LLC", "INC", "CORP", "LTD", "TRUST", "BANK")):
+            parts = name.split()
+            variants.update((f"{parts[-1]}, {' '.join(parts[:-1])}", f"{parts[-1]},{' '.join(parts[:-1])}"))
+        # Never index or query a surname/first name alone.
+        return sorted(variants)
+
+    def lookup(self, owner):
+        matches = {}
+        for key in self._v(owner or ""):
+            matches.update(self.idx.get(key, {}))
+        if len({pid for pid, year in matches}) != 1:
+            return {}
+        # BCAD may expose several valuation years; no values are used as scores.
+        return matches[max(matches, key=lambda identity: identity[1])]
 
 # ── CSV ───────────────────────────────────────────────────────────────────────
 def export_csv(records,path):
@@ -726,8 +772,7 @@ async def main():
 
     proxy_host,proxy_port = find_working_proxy()
 
-    print("\n📦 Loading BCAD parcel data …")
-    parcel = ParcelLookup()
+
 
     all_recs=[]
     proxies_to_try=[]
@@ -788,14 +833,22 @@ async def main():
 
     print(f"\n  Raw: {len(all_recs)} | Unique: {len(unique)} | In window: {len(in_window)}")
 
+    # Enrichment is optional and only requested after complete collection.
+    print("\n📦 Loading BCAD parcel data …")
+    parcel = ParcelLookup(owners=[r.get("owner", "") for r in in_window if r.get("is_motivated")])
+
     # Enrich + score — keep only target types
     motivated=[]
     for r in in_window:
         hit=parcel.lookup(r.get("owner",""))
         if hit:
-            for f in ["prop_address","prop_city","prop_zip",
-                      "mail_address","mail_city","mail_state","mail_zip"]:
-                if hit.get(f): r[f]=hit[f]
+            # Fill each missing address as one coherent group. Default TX/San
+            # Antonio fields must not survive an out-of-city/state match.
+            for fields in [("prop_address", "prop_city", "prop_zip"),
+                           ("mail_address", "mail_city", "mail_state", "mail_zip")]:
+                if safe(r.get(fields[0])).upper() in ("", "N/A", "-") and hit.get(fields[0]):
+                    for field in fields:
+                        r[field] = hit.get(field, "")
         r["flags"],r["score"]=score_record(r,s_iso)
         if r.get("is_motivated"):
             motivated.append(r)
