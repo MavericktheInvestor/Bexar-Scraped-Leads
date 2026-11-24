@@ -1,8 +1,8 @@
 {
-  "page": 11,
+  "page": 16,
   "offset": 0,
-  "total_pulled": 7257,
-  "last_run": "2026-11-23",
+  "total_pulled": 7416,
+  "last_run": "2026-11-24",
   "anchor": "people",
-  "note": "Completed full property cycle (pages 1-50). Switched to people+require_phone anchor. Pages 1-10 done. Next: page 11."
+  "note": "Completed full property cycle (pages 1-50). Switched to people+require_phone anchor. Pages 1-15 done. Next: page 16."
 }
