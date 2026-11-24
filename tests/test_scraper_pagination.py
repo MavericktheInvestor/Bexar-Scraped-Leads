@@ -190,13 +190,13 @@ class MainHarness:
         self.namespace = {
             "datetime": types.SimpleNamespace(utcnow=lambda: datetime(2026, 1, 7), strptime=datetime.strptime),
             "timedelta": timedelta,
-            "re": re, "json": json,
+            "re": re, "json": json, "safe": lambda v: str(v).strip() if v else "",
             "date_range_mm": lambda: ("01/01/2026", "01/07/2026"),
             "date_range_iso": lambda: ("2026-01-01", "2026-01-07"),
             "DOC_TYPE_MAP": {"NOFC": "Foreclosure"},
             "find_working_proxy": lambda: ("first", "1"),
             "PROXY_LIST": [("first", "1"), ("second", "2")],
-            "ParcelLookup": lambda: types.SimpleNamespace(lookup=lambda _: {}),
+            "ParcelLookup": lambda **_: types.SimpleNamespace(lookup=lambda _: {}),
             "playwright_scrape": scraper,
             "score_record": lambda *_: ([], 70),
             "DASH_DIR": destination, "DATA_DIR": destination,
@@ -210,6 +210,45 @@ class MainHarness:
 
 
 class MainCompletionTests(unittest.TestCase):
+    def test_parcel_enrichment_preserves_filing_address_and_fills_missing_fields(self):
+        harness = MainHarness(result=[{
+            'doc_num': '1', 'doc_type': 'NOFC', 'owner': 'Jane Doe',
+            'filed': '2026-01-02', 'is_motivated': True,
+            'prop_address': '123 FILING ST', 'mail_address': 'N/A', 'mail_state': 'TX',
+        }])
+        harness.namespace['ParcelLookup'] = lambda **_: types.SimpleNamespace(lookup=lambda _: {
+            'prop_address': '456 DIFFERENT PARCEL ST', 'mail_address': 'PO BOX 7',
+            'mail_city': 'OAKLAND', 'mail_state': 'CA', 'mail_zip': '94601'})
+        harness.run()
+        result = json.loads(harness.writes[0])['records'][0]
+        self.assertEqual(result['prop_address'], '123 FILING ST')
+        self.assertEqual(result['mail_address'], 'PO BOX 7')
+        self.assertEqual(result['mail_state'], 'CA')
+
+    def test_enrichment_only_requests_accepted_target_owners(self):
+        harness = MainHarness(result=[
+            {'doc_num': '1', 'doc_type': 'NOFC', 'owner': 'Jane Doe',
+             'filed': '2026-01-02', 'is_motivated': True},
+            {'doc_num': '2', 'doc_type': 'OTHER', 'owner': 'Other Name',
+             'filed': '2026-01-02', 'is_motivated': False},
+        ])
+        requested = []
+        def lookup_factory(owners=()):
+            requested.extend(owners)
+            return types.SimpleNamespace(lookup=lambda _: {})
+        harness.namespace['ParcelLookup'] = lookup_factory
+        harness.run()
+        self.assertEqual(requested, ['Jane Doe'])
+
+    def test_failed_collection_does_not_request_parcel_data(self):
+        harness = MainHarness(error=RuntimeError('county access blocked'))
+        parcel_requests = []
+        harness.namespace['ParcelLookup'] = lambda: parcel_requests.append(True)
+        with self.assertRaisesRegex(RuntimeError, 'county access blocked'):
+            harness.run()
+        self.assertEqual(parcel_requests, [])
+        self.assertEqual(harness.writes, [])
+
     def test_loading_failure_retries_whole_window_with_next_proxy(self):
         def result(call):
             if call == 1:

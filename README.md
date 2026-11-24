@@ -115,8 +115,22 @@ Use `data/leads.csv` — columns match GoHighLevel contact import format:
 
 - The scraper uses Playwright (Chromium) to navigate the clerk portal's
   JavaScript-heavy search UI.
-- BCAD bulk data is downloaded as a ZIP containing a DBF file; the largest
-  DBF is indexed by owner name for address enrichment.
+- BCAD enrichment uses the official `maps.bcad.org` ArcGIS property table (MapServer/9).
+  It queries small, ordered batches of complete owner-name variants only after
+  county collection succeeds; it does not download the entire appraisal roll.
+  The latest valuation year among each matching property's returned rows is
+  retained internally (not independently verified as the county's current year);
+  no appraisal value is used to change the seller-scoring formula.
+- Enrichment rejects API errors, incomplete/repeated pages, and changing counts.
+  Any failed batch discards all enrichment for that run. Multiple properties
+  for the same name are left unmatched; surname-only matches are not accepted.
+  Existing filing addresses are preserved and only missing fields are filled.
+- A county-portal security verification or access denial remains a collection
+  blocker. The scraper does not bypass that protection; restore a supported,
+  authorized county/vendor access route before expecting fresh filings.
+  Passing regression tests or working BCAD enrichment alone is not proof of
+  a successful live county collection. Failed collection preserves accepted
+  dashboard data and does not request parcel enrichment.
 - All records are stored as JSON; no database required.
 - Bad/malformed records are skipped silently (never crash).
 - Retry logic: 3 attempts per document type with 3-second backoff.
