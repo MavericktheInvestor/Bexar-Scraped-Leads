@@ -1,8 +1,8 @@
 {
-  "page": 1,
+  "page": 6,
   "offset": 0,
-  "total_pulled": 7576,
-  "last_run": "2026-11-26",
+  "total_pulled": 7661,
+  "last_run": "2026-11-27",
   "anchor": "people",
-  "note": "Page 25 returned 99 records (< 100 \u2192 end of people dataset). Resetting to page 1 for next run. Completed pages 21-25 today (57 new leads)."
+  "note": "Completed pages 1-5 today (85 new leads). Dataset has 4798 total people / 48 pages. Next run starts page 6."
 }
